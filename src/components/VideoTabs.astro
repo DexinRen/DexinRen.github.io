@@ -1,0 +1,47 @@
+---
+// Small video gallery: one muted looping clip at a time, plays only while visible.
+interface Props { items: { label: string; src: string; poster: string; alt: string }[]; caption?: string }
+const { items, caption } = Astro.props;
+---
+<figure class="vt" data-vt>
+  <div class="tabs" role="tablist">
+    {items.map((it, i) => <button type="button" role="tab" class="tab" aria-selected={i === 0 ? 'true' : 'false'}>{it.label}</button>)}
+  </div>
+  <div class="stage">
+    {items.map((it, i) => (
+      <video class:list={['v', { on: i === 0 }]} muted loop playsinline preload={i === 0 ? 'metadata' : 'none'} poster={it.poster} aria-label={it.alt} width="600" height="668">
+        <source src={it.src} type="video/mp4" />
+      </video>
+    ))}
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .vt { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tab { font: inherit; font-size: .8rem; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--ink-2); cursor: pointer; }
+  .tab[aria-selected='true'] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .stage { position: relative; max-width: 460px; margin: 0 auto; aspect-ratio: 600 / 668; border-radius: 10px; overflow: hidden; background: #f9f8f5; }
+  .v { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .4s; }
+  .v.on { opacity: 1; }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-vt]').forEach((fig) => {
+    const tabs = Array.from(fig.querySelectorAll<HTMLButtonElement>('.tab'));
+    const vids = Array.from(fig.querySelectorAll<HTMLVideoElement>('video'));
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let cur = 0, visible = false;
+    const sync = () => vids.forEach((v, i) => {
+      v.classList.toggle('on', i === cur);
+      if (i === cur && visible && !reduce) v.play().catch(() => {}); else v.pause();
+    });
+    tabs.forEach((t, i) => t.addEventListener('click', () => {
+      cur = i; tabs.forEach((x, j) => x.setAttribute('aria-selected', String(j === i)));
+      vids[i].preload = 'auto'; sync();
+    }));
+    new IntersectionObserver(([e]) => { visible = e.isIntersecting; sync(); }, { threshold: 0.35 }).observe(fig);
+    if (reduce) vids.forEach((v) => (v.controls = true));
+  });
+</script>

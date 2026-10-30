@@ -1,0 +1,78 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProjectHeader from '../../components/ProjectHeader.astro';
+import Chart from '../../components/Chart.astro';
+import { qwenEval as e } from '../../data/qwen-eval';
+
+const label = (s: number) => (s === 0 ? 'base' : `${s / 1000}k`);
+const x = e.steps.map(label);
+const at = (s: number) => e.steps.indexOf(s);
+const best = at(15000);
+---
+<Base title="Math SFT for Qwen2.5" description="Supervised fine-tuning of Qwen2.5-0.5B on OpenR1-Math-220k for checkable answers, with a bootstrap evaluation of every checkpoint.">
+  <ProjectHeader
+    title="Math SFT for Qwen2.5"
+    subtitle="Fine-tuning a 0.5B model to give answers a grader can check, and measuring what that costs."
+    status="Released · model on Hugging Face"
+    role="Solo project"
+    period="Spring 2025"
+    tags={['LLM fine-tuning', 'Noisy supervision', 'Evaluation design', 'Qwen2.5']}
+    links={[
+      { label: 'Model card', href: 'https://huggingface.co/DexinR/qwen2.5-math220k-ckpt15000', icon: 'link' },
+      { label: 'Code', href: 'https://github.com/DexinRen/open-r1-Qwen-SFT', icon: 'code' },
+      { label: 'Report (PDF)', href: 'https://github.com/DexinRen/open-r1-Qwen-SFT/blob/master/Qwen_Finetune_Project_Report.pdf', icon: 'file' },
+    ]}
+    tldr={[
+      'Supervised fine-tuning of <strong>Qwen2.5-0.5B</strong> on OpenR1-Math-220k, prompting for step-by-step work and a final answer in <code>\\boxed{X}</code> or <code>Answer: X</code>.',
+      `Answer-format accuracy on GPQA rose from <strong>${e.gpqaClean[0].toFixed(3)} to ${e.gpqaClean[best].toFixed(3)}</strong> (strict extraction); with lenient extraction, from ${e.gpqaAll[0].toFixed(3)} to ${e.gpqaAll[best].toFixed(3)}.`,
+      `MATH500 accuracy <strong>dipped slightly</strong>, from ${e.math500[0].toFixed(3)} to ${e.math500[best].toFixed(3)}: the cost of imitating noisy, auto-generated solutions.`,
+    ]}
+  />
+
+  <h2>Why this project</h2>
+  <p>
+    A small model that reasons correctly but buries its answer in free text scores as wrong under strict grading. I wanted to see how much
+    supervised fine-tuning could teach a 0.5B model to state its answer in a checkable format, and what it would cost when the
+    supervision itself is noisy: OpenR1-Math-220k solutions are generated automatically and not always correct.
+  </p>
+
+  <h2>Setup</h2>
+  <ul>
+    <li><strong>Data.</strong> The verified <code>default</code> subset of OpenR1-Math-220k, which has no test split. I split it myself: 83,000 examples for training, 10,000 for test, and 10,000 held out for validation.</li>
+    <li><strong>Prompt.</strong> Each example joins the problem, an instruction to solve step by step and end with <code>\boxed{"{"}X{"}"}</code> or <code>Answer: X</code>, and the reference solution as the target.</li>
+    <li><strong>Training.</strong> Learning rate 2.5×10⁻⁶ with cosine decay, no warm-up, batch size 64, a checkpoint every 500 steps; built on a fork of Hugging Face's open-r1.</li>
+  </ul>
+
+  <h2>Evaluation design</h2>
+  <p>
+    The open-r1 environment could not evaluate during training, so I wrote a separate script that scores every checkpoint afterwards.
+    Two choices mattered:
+  </p>
+  <ul>
+    <li><strong>Bootstrap to a fixed size.</strong> Every benchmark (Math220k train and test, MATH500, GPQA) is resampled to 1,000 items once, and every checkpoint is scored on the same sets. Small benchmarks such as GPQA stop dominating the noise, and checkpoints are compared on identical data.</li>
+    <li><strong>Strict and lenient answer extraction.</strong> Strict extraction accepts only <code>\boxed{"{"}X{"}"}</code> or <code>Answer: X</code>. Lenient extraction (GPQA only) also accepts phrases such as “the correct answer is X”. The gap between the two measures formatting discipline, separately from correctness.</li>
+  </ul>
+
+  <Chart
+    title="Accuracy of every checkpoint (bootstrapped, 1,000 items each)"
+    spec={{
+      type: 'line', x, yMin: 0, yMax: 1, decimals: 3, xLabel: 'training step',
+      series: [
+        { name: 'Math220k test', values: e.test, slot: 2 },
+        { name: 'GPQA, lenient', values: e.gpqaAll, slot: 'ref', dashed: true },
+        { name: 'GPQA, strict format', values: e.gpqaClean, slot: 1 },
+        { name: 'MATH500', values: e.math500, slot: 3 },
+      ],
+    }}
+    caption={`In-domain accuracy saturates near 0.9 by about 10k steps. The strict–lenient gap on GPQA closes after about 3.5k steps: the model has learned the format. GPQA swings a lot between neighbouring checkpoints (${e.gpqaClean[best].toFixed(3)} at 15k, ${e.gpqaClean[at(15500)].toFixed(3)} at 15.5k), so the released checkpoint is the best point of a noisy curve, not a plateau. MATH500 drifts down slowly.`}
+    table={{ head: ['Step', 'Math220k test', 'MATH500', 'GPQA strict', 'GPQA lenient'], rows: e.steps.map((s, i) => [label(s), e.test[i], e.math500[i], e.gpqaClean[i], e.gpqaAll[i]]) }}
+    source="eval_summary_bootstrap.csv in the project repository"
+  />
+
+  <h2>What I took from it</h2>
+  <ul>
+    <li><strong>Format is learned fast; correctness is not.</strong> Strict and lenient GPQA accuracy differed by 25.7 points before training and by about 3.4 points on average after 3.5k steps.</li>
+    <li><strong>Noisy supervision has a price.</strong> In-domain accuracy kept climbing while MATH500 slowly declined, which fits a model absorbing the quirks of auto-generated solutions rather than better reasoning.</li>
+    <li><strong>Grade on answers, not solutions.</strong> I scored only the short <code>answer</code> field, because the long <code>solution</code> field is often inconsistent or wrong.</li>
+  </ul>
+</Base>

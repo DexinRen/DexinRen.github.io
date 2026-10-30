@@ -1,0 +1,63 @@
+---
+// Figure wrapper: title + responsive chart + caption + data table (accessible fallback).
+interface Props {
+  title: string;
+  spec: Record<string, unknown>;
+  caption?: string;
+  table?: { head: string[]; rows: (string | number)[][] };
+  source?: string;
+}
+const { title, spec, caption, table, source } = Astro.props;
+---
+<figure class="chart-fig">
+  <p class="chart-title">{title}</p>
+  <div class="chart-host" data-chart={JSON.stringify(spec)}></div>
+  {(caption || source) && (
+    <figcaption>
+      {caption}{source && <span class="src"> Source: {source}</span>}
+    </figcaption>
+  )}
+  {table && (
+    <details class="data">
+      <summary>Show data table</summary>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>{table.head.map((h, i) => <th class:list={[{ num: i > 0 }]}>{h}</th>)}</tr></thead>
+          <tbody>{table.rows.map((r) => <tr>{r.map((c, i) => <td class:list={[{ num: i > 0 }]}>{c}</td>)}</tr>)}</tbody>
+        </table>
+      </div>
+    </details>
+  )}
+</figure>
+
+<script>
+  import { mountCharts } from '../scripts/charts';
+  mountCharts();
+</script>
+
+<style is:global>
+  .chart-fig { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 14px; margin: 2rem 0; }
+  .chart-title { font-weight: 600; font-size: .95rem; margin: 0 0 .5rem; color: var(--ink); }
+  .chart-host { position: relative; width: 100%; min-height: 120px; touch-action: pan-y; }
+  .chart-svg { display: block; overflow: visible; }
+  .chart-svg .ct { font: 11.5px var(--font-sans); fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .chart-svg .ct.ink { fill: var(--ink-2); }
+  .chart-svg .ct.val { fill: var(--ink-2); font-weight: 500; }
+  .chart-svg .ct.lbl { fill: var(--ink-2); font-weight: 500; }
+  .chart-svg .ct.muted { fill: var(--ink-3); font-size: 11px; }
+  .chart-svg .cg { stroke: var(--line); stroke-width: 1; }
+  .chart-svg .cz { stroke: var(--line-strong); stroke-width: 1; }
+  .chart-svg .cx { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
+  .chart-svg .cm { stroke: var(--surface); stroke-width: 2; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; list-style: none; padding: 0; margin: 0 0 10px; font-size: .8rem; color: var(--ink-2); }
+  .chart-legend li { margin: 0; display: inline-flex; align-items: center; }
+  .sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px; background: var(--c); margin-right: 7px; flex: none; }
+  .sw.dashed { background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px); }
+  .chart-tip { position: absolute; z-index: 5; pointer-events: none; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: var(--shadow-lg); padding: 8px 10px; font-size: .78rem; min-width: 150px; max-width: 260px; color: var(--ink-2); }
+  .chart-tip .th { font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .chart-tip .tr { display: flex; align-items: center; gap: 2px; line-height: 1.6; }
+  .chart-tip .tr span { flex: 1; margin-right: 10px; }
+  .chart-tip .tr b { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .chart-tip .tn { margin-top: 4px; color: var(--ink-3); }
+  .chart-fig .src { color: var(--ink-3); }
+</style>

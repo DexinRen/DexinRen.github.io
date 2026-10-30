@@ -1,0 +1,555 @@
+{
+ "generated": "2026-10-30T09:45:54.100Z",
+ "notes": [
+  {
+   "id": "learning-theory/statistical-learning",
+   "title": "Statistical Learning: Competing with a Reference Class",
+   "area": "Statistical Learning Theory",
+   "areaSlug": "learning-theory",
+   "url": "/notes/learning-theory/statistical-learning/",
+   "tags": [
+    "learning_theory"
+   ],
+   "links": [],
+   "related": [
+    "learning-theory/symmetrization-and-rademacher-complexity",
+    "online-learning/online-to-batch",
+    "learning-theory/no-free-lunch"
+   ]
+  },
+  {
+   "id": "learning-theory/no-free-lunch",
+   "title": "PAC Learning, Density Estimation and No Free Lunch",
+   "area": "Statistical Learning Theory",
+   "areaSlug": "learning-theory",
+   "url": "/notes/learning-theory/no-free-lunch/",
+   "tags": [
+    "learning_theory"
+   ],
+   "links": [],
+   "related": [
+    "learning-theory/statistical-learning",
+    "online-learning/online-to-batch"
+   ]
+  },
+  {
+   "id": "learning-theory/symmetrization-and-rademacher-complexity",
+   "title": "Bounding ERM: Symmetrization, Rademacher Complexity and Finite Classes",
+   "area": "Statistical Learning Theory",
+   "areaSlug": "learning-theory",
+   "url": "/notes/learning-theory/symmetrization-and-rademacher-complexity/",
+   "tags": [
+    "learning_theory",
+    "complexity_measures"
+   ],
+   "links": [],
+   "related": [
+    "learning-theory/covering-numbers",
+    "probability/sub-gaussian"
+   ]
+  },
+  {
+   "id": "learning-theory/covering-numbers",
+   "title": "Covering Numbers: From Finite to Infinite Classes",
+   "area": "Statistical Learning Theory",
+   "areaSlug": "learning-theory",
+   "url": "/notes/learning-theory/covering-numbers/",
+   "tags": [
+    "learning_theory",
+    "complexity_measures"
+   ],
+   "links": [],
+   "related": [
+    "learning-theory/chaining",
+    "learning-theory/fat-shattering-dimension"
+   ]
+  },
+  {
+   "id": "learning-theory/chaining",
+   "title": "Dudley's Entropy Integral and Chaining",
+   "area": "Statistical Learning Theory",
+   "areaSlug": "learning-theory",
+   "url": "/notes/learning-theory/chaining/",
+   "tags": [
+    "learning_theory",
+    "complexity_measures"
+   ],
+   "links": [],
+   "related": [
+    "learning-theory/covering-numbers",
+    "learning-theory/fat-shattering-dimension"
+   ]
+  },
+  {
+   "id": "learning-theory/fat-shattering-dimension",
+   "title": "From Pseudo-Dimension to Fat-Shattering Dimension",
+   "area": "Statistical Learning Theory",
+   "areaSlug": "learning-theory",
+   "url": "/notes/learning-theory/fat-shattering-dimension/",
+   "tags": [
+    "learning_theory",
+    "complexity_measures"
+   ],
+   "links": [],
+   "related": [
+    "learning-theory/neural-network-generalization",
+    "learning-theory/covering-numbers",
+    "learning-theory/chaining"
+   ]
+  },
+  {
+   "id": "learning-theory/neural-network-generalization",
+   "title": "Why Neural Networks Generalize: Norm-Based Covers, Spectral Complexity and Margins",
+   "area": "Statistical Learning Theory",
+   "areaSlug": "learning-theory",
+   "url": "/notes/learning-theory/neural-network-generalization/",
+   "tags": [
+    "learning_theory",
+    "deep_learning"
+   ],
+   "links": [],
+   "related": [
+    "learning-theory/fat-shattering-dimension"
+   ]
+  },
+  {
+   "id": "learning-theory/online-learnability",
+   "title": "Online Learnability as a Minimax Game",
+   "area": "Statistical Learning Theory",
+   "areaSlug": "learning-theory",
+   "url": "/notes/learning-theory/online-learnability/",
+   "tags": [
+    "learning_theory",
+    "online_learning"
+   ],
+   "links": [],
+   "related": [
+    "learning-theory/symmetrization-and-rademacher-complexity",
+    "online-learning/online-to-batch"
+   ]
+  },
+  {
+   "id": "online-learning/online-learning-games",
+   "title": "Online Learning Games: Protocols, Feedback and Environments",
+   "area": "Online Learning & Bandits",
+   "areaSlug": "online-learning",
+   "url": "/notes/online-learning/online-learning-games/",
+   "tags": [
+    "online_learning",
+    "machine_learning"
+   ],
+   "links": [
+    "machine-learning/gradient-based-optimizers"
+   ],
+   "related": [
+    "online-learning/online-to-batch",
+    "online-learning/experts-ftl-vs-hedge"
+   ]
+  },
+  {
+   "id": "online-learning/online-to-batch",
+   "title": "Online Learning, Regret and Online-to-Batch Conversion",
+   "area": "Online Learning & Bandits",
+   "areaSlug": "online-learning",
+   "url": "/notes/online-learning/online-to-batch/",
+   "tags": [
+    "online_learning",
+    "learning_theory",
+    "machine_learning"
+   ],
+   "links": [],
+   "related": [
+    "online-learning/experts-ftl-vs-hedge",
+    "learning-theory/statistical-learning",
+    "learning-theory/no-free-lunch",
+    "online-learning/online-learning-games"
+   ]
+  },
+  {
+   "id": "online-learning/experts-ftl-vs-hedge",
+   "title": "Prediction with Expert Advice: Why FTL Fails and Hedge Works",
+   "area": "Online Learning & Bandits",
+   "areaSlug": "online-learning",
+   "url": "/notes/online-learning/experts-ftl-vs-hedge/",
+   "tags": [
+    "online_learning",
+    "machine_learning"
+   ],
+   "links": [],
+   "related": [
+    "online-learning/exp2",
+    "online-learning/online-learning-games",
+    "online-learning/online-to-batch"
+   ]
+  },
+  {
+   "id": "online-learning/exp2",
+   "title": "Exp2: Bandit Linear Optimization from One Scalar Loss",
+   "area": "Online Learning & Bandits",
+   "areaSlug": "online-learning",
+   "url": "/notes/online-learning/exp2/",
+   "tags": [
+    "online_learning",
+    "bandits"
+   ],
+   "links": [],
+   "related": [
+    "online-learning/scrible",
+    "online-learning/combinatorial-decisions"
+   ]
+  },
+  {
+   "id": "online-learning/scrible",
+   "title": "SCRiBLe: Bandit Optimization with Self-Concordant Barriers",
+   "area": "Online Learning & Bandits",
+   "areaSlug": "online-learning",
+   "url": "/notes/online-learning/scrible/",
+   "tags": [
+    "online_learning",
+    "bandits"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "online-learning/combinatorial-decisions",
+   "title": "Combinatorial Decisions and Convexification",
+   "area": "Online Learning & Bandits",
+   "areaSlug": "online-learning",
+   "url": "/notes/online-learning/combinatorial-decisions/",
+   "tags": [
+    "online_learning",
+    "bandits"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "machine-learning/variational-autoencoders",
+   "title": "Variational Autoencoders: Deriving the ELBO",
+   "area": "Machine Learning & Generative Models",
+   "areaSlug": "machine-learning",
+   "url": "/notes/machine-learning/variational-autoencoders/",
+   "tags": [
+    "AI",
+    "probablistic_model",
+    "statistics"
+   ],
+   "links": [],
+   "related": [
+    "machine-learning/score-based-generative-models"
+   ]
+  },
+  {
+   "id": "machine-learning/score-based-generative-models",
+   "title": "Score-Based Generative Modeling: From Noise Levels to SDEs",
+   "area": "Machine Learning & Generative Models",
+   "areaSlug": "machine-learning",
+   "url": "/notes/machine-learning/score-based-generative-models/",
+   "tags": [
+    "AI",
+    "statistics",
+    "probablistic_model"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "machine-learning/gradient-based-optimizers",
+   "title": "Gradient-Based Optimizers: From SGD to AdamW",
+   "area": "Machine Learning & Generative Models",
+   "areaSlug": "machine-learning",
+   "url": "/notes/machine-learning/gradient-based-optimizers/",
+   "tags": [
+    "optimization",
+    "deep_learning",
+    "AI"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "probability/gaussian-mixture-models",
+   "title": "Gaussian Mixture Models and the EM Algorithm",
+   "area": "Probability & Statistics",
+   "areaSlug": "probability",
+   "url": "/notes/probability/gaussian-mixture-models/",
+   "tags": [
+    "statistics",
+    "probability",
+    "probability_distribution",
+    "probablistic_model"
+   ],
+   "links": [],
+   "related": [
+    "machine-learning/variational-autoencoders"
+   ]
+  },
+  {
+   "id": "probability/sub-gaussian",
+   "title": "Sub-Gaussian Variables and the Maximal Inequality",
+   "area": "Probability & Statistics",
+   "areaSlug": "probability",
+   "url": "/notes/probability/sub-gaussian/",
+   "tags": [
+    "statistics",
+    "distributions"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "probability/conditional-probability",
+   "title": "Conditional Probability, Bayes' Rule and Total Probability",
+   "area": "Probability & Statistics",
+   "areaSlug": "probability",
+   "url": "/notes/probability/conditional-probability/",
+   "tags": [
+    "probability",
+    "statistics"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "numerical-linear-algebra/qr-and-householder",
+   "title": "Least Squares with QR and Householder Reflectors",
+   "area": "Numerical Linear Algebra",
+   "areaSlug": "numerical-linear-algebra",
+   "url": "/notes/numerical-linear-algebra/qr-and-householder/",
+   "tags": [
+    "linear_algebra"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "cookbook/bang-bang-chicken",
+   "title": "Bang Bang Chicken Strips (棒棒鸡丝)",
+   "area": "Cookbook",
+   "areaSlug": "cookbook",
+   "url": "/notes/cookbook/bang-bang-chicken/",
+   "tags": [
+    "Strange_Flavor",
+    "怪味",
+    "cold_dish",
+    "appetizer",
+    "cook"
+   ],
+   "links": [],
+   "related": [
+    "kitchen-modules/strange-flavor-sauce"
+   ]
+  },
+  {
+   "id": "cookbook/cherry-glazed-pork",
+   "title": "Cherry-Glazed Pork (樱桃肉)",
+   "area": "Cookbook",
+   "areaSlug": "cookbook",
+   "url": "/notes/cookbook/cherry-glazed-pork/",
+   "tags": [
+    "main_course",
+    "pork",
+    "sweet_n_savory",
+    "cook"
+   ],
+   "links": [
+    "kitchen-modules/umami-enhancers"
+   ],
+   "related": [
+    "kitchen-modules/caramel"
+   ]
+  },
+  {
+   "id": "cookbook/mapo-tofu",
+   "title": "Spicy-Numbing Tofu (麻婆豆腐)",
+   "area": "Cookbook",
+   "areaSlug": "cookbook",
+   "url": "/notes/cookbook/mapo-tofu/",
+   "tags": [
+    "numb",
+    "pork",
+    "tofu",
+    "aromatic_soy",
+    "spicy_mild",
+    "gelatinized_mild",
+    "viscosity_mid",
+    "cook"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "cookbook/egg-pudding",
+   "title": "Egg Pudding (紹子蒸蛋)",
+   "area": "Cookbook",
+   "areaSlug": "cookbook",
+   "url": "/notes/cookbook/egg-pudding/",
+   "tags": [
+    "cook",
+    "main_course",
+    "pork",
+    "egg"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "cookbook/mustard-green-bean-soup",
+   "title": "Mustard Green and Bean Soup (酸菜豆瓣汤)",
+   "area": "Cookbook",
+   "areaSlug": "cookbook",
+   "url": "/notes/cookbook/mustard-green-bean-soup/",
+   "tags": [
+    "savory",
+    "sour",
+    "mild",
+    "soup",
+    "muster_green",
+    "lima_bean",
+    "mushy",
+    "cook"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "kitchen-modules/chicken-stock",
+   "title": "Chicken Stock (高汤)",
+   "area": "Kitchen Building Blocks",
+   "areaSlug": "kitchen-modules",
+   "url": "/notes/kitchen-modules/chicken-stock/",
+   "tags": [
+    "modular_cook",
+    "chicken",
+    "umami",
+    "broth"
+   ],
+   "links": [],
+   "related": [
+    "kitchen-modules/mirepoix",
+    "kitchen-modules/umami-enhancers"
+   ]
+  },
+  {
+   "id": "kitchen-modules/chicken-broth",
+   "title": "Chicken Broth (清汤)",
+   "area": "Kitchen Building Blocks",
+   "areaSlug": "kitchen-modules",
+   "url": "/notes/kitchen-modules/chicken-broth/",
+   "tags": [
+    "modular_cook",
+    "chicken",
+    "umami",
+    "broth"
+   ],
+   "links": [],
+   "related": [
+    "kitchen-modules/chicken-stock"
+   ]
+  },
+  {
+   "id": "kitchen-modules/caramel",
+   "title": "Caramel and Its Quenching Liquids",
+   "area": "Kitchen Building Blocks",
+   "areaSlug": "kitchen-modules",
+   "url": "/notes/kitchen-modules/caramel/",
+   "tags": [
+    "food_color",
+    "sweet",
+    "red_color",
+    "sugar",
+    "modular_cook"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "kitchen-modules/mirepoix",
+   "title": "Mirepoix",
+   "area": "Kitchen Building Blocks",
+   "areaSlug": "kitchen-modules",
+   "url": "/notes/kitchen-modules/mirepoix/",
+   "tags": [
+    "french",
+    "modular",
+    "soup_base",
+    "sauce_base",
+    "modular_cook"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "kitchen-modules/strange-flavor-sauce",
+   "title": "Strange-Flavor Sauce (怪味酱)",
+   "area": "Kitchen Building Blocks",
+   "areaSlug": "kitchen-modules",
+   "url": "/notes/kitchen-modules/strange-flavor-sauce/",
+   "tags": [
+    "怪味",
+    "Strange_Flavor",
+    "sauce",
+    "nutty",
+    "sour",
+    "sweet",
+    "aromatic_soy",
+    "spicy_mild",
+    "sesame",
+    "modular_cook"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "kitchen-modules/yuxiang-sauce",
+   "title": "Yuxiang Sauce (鱼香酱)",
+   "area": "Kitchen Building Blocks",
+   "areaSlug": "kitchen-modules",
+   "url": "/notes/kitchen-modules/yuxiang-sauce/",
+   "tags": [
+    "lychee_flavor",
+    "yuxiang",
+    "sweet",
+    "sour",
+    "aromatic_soy",
+    "sauce",
+    "荔枝口",
+    "鱼香",
+    "modular_cook"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "kitchen-modules/umami-enhancers",
+   "title": "Umami Enhancers",
+   "area": "Kitchen Building Blocks",
+   "areaSlug": "kitchen-modules",
+   "url": "/notes/kitchen-modules/umami-enhancers/",
+   "tags": [
+    "umami",
+    "flavor",
+    "flavor_enhancer"
+   ],
+   "links": [],
+   "related": []
+  },
+  {
+   "id": "kitchen-modules/fermentation-starter",
+   "title": "Fermentation Starter for Pickles",
+   "area": "Kitchen Building Blocks",
+   "areaSlug": "kitchen-modules",
+   "url": "/notes/kitchen-modules/fermentation-starter/",
+   "tags": [
+    "fermentation",
+    "pickle",
+    "LAB",
+    "inoculant",
+    "LAB_growth_medium"
+   ],
+   "links": [],
+   "related": []
+  }
+ ]
+}

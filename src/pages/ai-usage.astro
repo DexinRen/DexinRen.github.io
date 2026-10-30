@@ -1,0 +1,259 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import { Content as Agents } from '../ai/AGENTS.md';
+import { Content as DesignDoc } from '../ai/examples/design_trafficwhatif_engine.md';
+import protocolSrc from '../ai/examples/theta_train.h?raw';
+import codeSrc from '../ai/examples/build_loss_mask.py?raw';
+
+const tiers = [
+  {
+    k: 'Design',
+    file: 'doc/design/*.md',
+    owner: 'Human only',
+    ai: 'Read-only. AI may never edit, rename, move or delete these files.',
+    what: 'The research problem, the overall architecture, and the decisions that make the project what it is.',
+    cls: 'human',
+  },
+  {
+    k: 'Protocol',
+    file: 'src/protocol/*.h',
+    owner: 'Human + AI',
+    ai: 'Drafts with me. Edits an existing protocol only with my explicit permission. Must not contradict the design.',
+    what: 'One interface per component: purpose, config and output contracts, functions, return structures, and a step-by-step workflow. Detailed enough to understand the program without reading the code.',
+    cls: 'shared',
+  },
+  {
+    k: 'Implementation',
+    file: 'src/*.py',
+    owner: 'AI-led',
+    ai: 'Writes the code, strictly under AGENTS.md: modular, functional, documented, fail-fast.',
+    what: 'The repetitive part. The code must match its protocol step by step, so review becomes comparing code against the protocol.',
+    cls: 'ai',
+  },
+];
+---
+<Base title="AI Usage" description="How Dexin Ren uses AI coding agents responsibly: humans own design and key decisions, AI does the repetitive work under explicit rules.">
+  <p class="eyebrow">AI usage</p>
+  <h1>How I use AI</h1>
+  <p class="lede">
+    AI agents write much of my code. They do not design my research. The rule is simple: <strong>AI does the repetitive work,
+    and my time goes to the problem, the design and the hard decisions.</strong> To keep that true, I use a fixed chain of authority
+    that the agent cannot rewrite.
+  </p>
+
+  <h2>Chain of authority</h2>
+  <ol class="tiers" aria-label="Design authority from highest to lowest">
+    {tiers.map((t, i) => (
+      <li class:list={['tier', t.cls]}>
+        <div class="tier-head">
+          <span class="lvl">{i + 1}</span>
+          <div>
+            <p class="tk">{t.k}</p>
+            <code class="tf">{t.file}</code>
+          </div>
+          <span class="owner">{t.owner}</span>
+        </div>
+        <p class="what">{t.what}</p>
+        <p class="perm"><strong>AI:</strong> {t.ai}</p>
+      </li>
+    ))}
+  </ol>
+  <p class="small muted">Higher levels override lower ones. A protocol may not contradict the design, and code may not contradict its protocol.</p>
+
+  <h2>When a request conflicts with the design</h2>
+  <p>The agent may not quietly “solve” a conflict by redesigning through code. It has to stop and hand the decision back to me:</p>
+  <ol class="steps">
+    <li><strong>Stop</strong> before editing any implementation.</li>
+    <li><strong>Explain</strong> the conflict and which design or protocol rule it breaks.</li>
+    <li><strong>Propose</strong> the protocol change that would be needed.</li>
+    <li><strong>Wait</strong> for explicit approval. If the <em>design</em> itself must change, I edit the design document myself first.</li>
+    <li><strong>Then</strong> update the protocol, then the code to match.</li>
+  </ol>
+
+  <aside class="anchor" aria-labelledby="anchor-title">
+    <p class="anchor-k">Technique</p>
+    <h3 id="anchor-title">Context anchor</h3>
+    <p class="anchor-line"><span>“I should read AGENTS.md next and treat it as my first priority.”</span></p>
+    <p>
+      In a long session, the instructions an agent read at the start slowly drop out of its working context. The freshest thing it
+      sees is its own last reply. So every reply ends with this sentence, which points straight back to the rules. The agent re-reads
+      AGENTS.md before the next task, and always after its context has been summarized or compacted.
+    </p>
+    <p class="anchor-note">It reduces forgetting rather than preventing it. The anchor only works together with the re-read rules in AGENTS.md.</p>
+  </aside>
+
+  <h2>Why it works this way</h2>
+  <ul class="why">
+    <li><strong>The human holds the intellectual core.</strong> The research question, the design and the trade-offs are written by me, in files the agent cannot touch.</li>
+    <li><strong>Review is tractable.</strong> I review every protocol before it goes into production. Because code must follow its protocol’s numbered workflow, checking an implementation means comparing two documents, not reverse-engineering a large diff.</li>
+    <li><strong>Errors stay visible.</strong> The rules forbid broad <code>try/except</code>, silent defaults and guessed data. When an assumption breaks, the program stops loudly instead of producing a plausible but wrong result. For research code this matters more than convenience.</li>
+    <li><strong>The rules don’t fade.</strong> Each reply ends with a <a href="#anchor-title">context anchor</a> that sends the agent back to its rules.</li>
+    <li><strong>The code stays functional.</strong> Small pure functions with explicit inputs and outputs, and side effects kept at the edges. That makes each piece easy to test and review, and a change in one place cannot quietly ripple into another.</li>
+  </ul>
+
+  <h2>One real example from each layer</h2>
+  <p>
+    The three files below come from my own projects. They show what each layer looks like in practice. The protocol and the
+    code are a matched pair: the protocol entry for <code>build_loss_mask</code> is the contract, and the function below it is
+    the implementation that has to honour it.
+  </p>
+  <div class="ex" data-ex>
+    <div class="ex-tabs" role="tablist" aria-label="Example layer">
+      <button type="button" role="tab" class="ex-tab" aria-selected="true" data-k="0"><span class="ex-n">1</span> Design</button>
+      <button type="button" role="tab" class="ex-tab" aria-selected="false" data-k="1"><span class="ex-n">2</span> Protocol</button>
+      <button type="button" role="tab" class="ex-tab" aria-selected="false" data-k="2"><span class="ex-n">3</span> Code</button>
+    </div>
+
+    <section class="ex-panel" role="tabpanel" data-p="0">
+      <p class="ex-meta">
+        <strong>TrafficWhatIf · <code>doc/design/Overview-Engine.md</code></strong><br />
+        Written by me alone. It fixes the goal, the components, how they connect, and the one principle everything else must respect.
+        Agents can read it but cannot change it. TrafficWhatIf is still in development, so the detailed design is removed here.
+      </p>
+      <div class="ex-box prose"><DesignDoc /></div>
+    </section>
+
+    <section class="ex-panel" role="tabpanel" data-p="1" hidden>
+      <p class="ex-meta">
+        <strong>RectifiedTraj · <code>src/protocol/theta_train.h</code></strong><br />
+        The interface for the training script: shared-state rules, every function's purpose, inputs, outputs and behaviour, and
+        the overall flow, with no implementation. Written together with the agent and reviewed by me before any code was written
+        against it. Look for <code>build_loss_mask</code>. RectifiedTraj used an earlier version of this workflow, so the format is
+        slightly simpler than the one AGENTS.md now prescribes.
+      </p>
+      <pre class="ex-box code"><code>{protocolSrc}</code></pre>
+    </section>
+
+    <section class="ex-panel" role="tabpanel" data-p="2" hidden>
+      <p class="ex-meta">
+        <strong>RectifiedTraj · <code>src/theta_train.py</code> (excerpt)</strong><br />
+        The implementation of <code>build_loss_mask</code>. The policy names, the head/body regions and the return value match the
+        protocol entry. Invalid input fails immediately with a clear error instead of falling back to a default.
+      </p>
+      <pre class="ex-box code"><code>{codeSrc}</code></pre>
+    </section>
+  </div>
+
+  <h2>The AGENTS.md I use</h2>
+  <p>
+    These are the rules every coding agent in my projects reads first: a context-refresh rule, design principles, design authority, the protocol format,
+    a functional programming style, documentation, return and error-handling policy, review priorities, and a definition of done.
+    This is the general version I start each project from; a project can add stricter rules where its design needs them.
+    Feel free to reuse or adapt it.
+  </p>
+  <div class="agents-actions">
+    <a class="btn" href="/AGENTS.md" download="AGENTS.md"><Icon name="download" />Download AGENTS.md</a>
+    <button class="btn ghost" type="button" id="copy-agents"><Icon name="file" />Copy</button>
+  </div>
+  <details class="agents" id="agents">
+    <summary>Read the full AGENTS.md <span class="muted small">(about 300 lines)</span></summary>
+    <div class="agents-body prose"><Agents /></div>
+  </details>
+
+  <p class="small muted note">
+    The examples are shared deliberately. The TrafficWhatIf design overview is shown with its detailed design removed; its full
+    design documents, protocols and code stay private until the work is published. RectifiedTraj is published, and its code is MIT-licensed. This website was also
+    built with an AI assistant: I decided the structure, the content and what could be disclosed, and reviewed the result.
+  </p>
+</Base>
+
+<style>
+  .lede strong { color: var(--ink); font-weight: 600; }
+  .tiers { list-style: none; padding: 0; margin: 1.5rem 0 .75rem; display: grid; gap: 0; }
+  .tier { position: relative; margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
+  .tier + .tier { margin-top: 28px; }
+  .tier + .tier::before { content: '↓'; position: absolute; top: -24px; left: 32px; color: var(--ink-3); font-size: .95rem; }
+  .tier.human { border-left: 4px solid var(--accent); }
+  .tier.shared { border-left: 4px solid var(--series-4); }
+  .tier.ai { border-left: 4px solid var(--series-2); }
+  .tier-head { display: flex; align-items: center; gap: 14px; }
+  .lvl { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); font-weight: 600; font-size: .85rem; }
+  .tk { margin: 0; font-family: var(--font-serif); font-size: 1.25rem; line-height: 1.2; }
+  .tf { font-size: .78rem; }
+  .owner { margin-left: auto; font-size: .75rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+  .human .owner { background: var(--accent-soft); color: var(--accent-ink); }
+  .what { margin: 12px 0 6px; color: var(--ink-2); font-size: .95rem; }
+  .perm { margin: 0; font-size: .88rem; color: var(--ink-3); }
+  .perm strong { color: var(--ink-2); }
+
+  .steps { padding-left: 1.3em; color: var(--ink-2); }
+  .steps strong, .why strong { color: var(--ink); }
+  .why { color: var(--ink-2); }
+  .why li { margin: .55rem 0; }
+
+  .ex { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin: 1.25rem 0 2rem; }
+  .ex-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .ex-tab { font: inherit; font-size: .85rem; display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px 6px 7px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--ink-2); cursor: pointer; }
+  .ex-n { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-2); font-size: .72rem; font-weight: 600; }
+  .ex-tab[aria-selected='true'] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .ex-tab[aria-selected='true'] .ex-n { background: color-mix(in srgb, var(--on-accent) 22%, transparent); }
+  .ex-meta { font-size: .88rem; color: var(--ink-2); margin: 0 4px 12px; }
+  .ex-meta strong { color: var(--ink); }
+  .ex-box { max-height: 62vh; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); margin: 0; }
+  .ex-box.prose { padding: 4px 20px 16px; font-size: .92rem; }
+  .ex-box.prose :global(h1) { font-size: 1.45rem; margin-top: 1.2rem; }
+  .ex-box.prose :global(h2) { font-size: 1.15rem; margin-top: 1.6rem; }
+  .ex-box.prose :global(pre) { background: var(--surface-2); padding: 12px 14px; border-radius: var(--radius-sm); overflow-x: auto; font-size: .76rem; line-height: 1.45; }
+  .ex-box.prose :global(pre code) { background: none; padding: 0; }
+  .ex-box.prose :global(blockquote) { margin: 1rem 0; padding: .2rem 1rem; border-left: 3px solid var(--accent); color: var(--ink); }
+  .ex-box.prose :global(hr) { margin: 1.5rem 0; }
+  .ex-box.prose :global(.redacted) {
+    position: relative; margin: 1rem 0; padding: 30px 16px 14px; border-radius: var(--radius-sm);
+    border: 1px dashed var(--line-strong); color: var(--ink-3); font-size: .85rem;
+    background: repeating-linear-gradient(-45deg, var(--surface-2) 0 10px, transparent 10px 20px);
+  }
+  .ex-box.prose :global(.redacted-tag) {
+    position: absolute; top: 8px; left: 12px; font-size: .68rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--on-ctl); background: var(--ctl); padding: 2px 8px; border-radius: 999px;
+  }
+  .ex-box.code { padding: 14px 16px; font: .78rem/1.55 var(--font-mono); color: var(--ink-2); white-space: pre; tab-size: 4; }
+  .ex-box.code code { background: none; padding: 0; font-size: inherit; }
+
+  .anchor { margin: 2rem 0 .5rem; padding: 18px 22px 14px; border-radius: var(--radius); background: var(--ctl-soft); border: 1px solid color-mix(in srgb, var(--ctl) 35%, transparent); border-left: 4px solid var(--ctl); }
+  .anchor-k { margin: 0; font-size: .7rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ctl-ink); }
+  .anchor h3 { margin: .15rem 0 .8rem; font-size: 1.35rem; }
+  .anchor-line { margin: 0 0 .9rem; }
+  .anchor-line span { display: block; font-family: var(--font-serif); font-size: 1.15rem; line-height: 1.45; color: var(--ink); background: var(--surface); border-radius: var(--radius-sm); padding: 12px 16px; border: 1px solid var(--line); }
+  .anchor p { color: var(--ink-2); font-size: .95rem; }
+  .anchor-note { font-size: .82rem !important; color: var(--ink-3) !important; margin: 0; }
+  .agents-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 1rem 0; }
+  .agents-actions button.btn { font: inherit; font-size: .85rem; cursor: pointer; }
+  .agents { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .agents summary { cursor: pointer; padding: 14px 18px; font-weight: 600; font-size: .95rem; }
+  .agents-body { padding: 4px 22px 18px; border-top: 1px solid var(--line); max-height: 70vh; overflow-y: auto; font-size: .92rem; }
+  .agents-body :global(h1) { font-size: 1.5rem; margin-top: 1.2rem; }
+  .agents-body :global(h2) { font-size: 1.2rem; margin-top: 1.8rem; }
+  .agents-body :global(h3) { font-size: 1.05rem; }
+  .agents-body :global(pre) { background: var(--surface-2); padding: 12px 14px; border-radius: var(--radius-sm); overflow-x: auto; font-size: .8rem; line-height: 1.5; }
+  .agents-body :global(pre code) { background: none; padding: 0; }
+  .agents-body :global(hr) { margin: 1.5rem 0; }
+  .note { margin-top: 2.5rem; }
+
+  @media (max-width: 639px) {
+    .tier-head { flex-wrap: wrap; }
+    .owner { margin-left: 44px; }
+    .agents-body { padding: 4px 14px 14px; }
+  }
+</style>
+
+<script>
+  import raw from '../ai/AGENTS.md?raw';
+
+  // Tabs for the three example layers
+  const ex = document.querySelector<HTMLElement>('[data-ex]')!;
+  const exTabs = Array.from(ex.querySelectorAll<HTMLButtonElement>('.ex-tab'));
+  const exPanels = Array.from(ex.querySelectorAll<HTMLElement>('.ex-panel'));
+  exTabs.forEach((t, k) => t.addEventListener('click', () => {
+    exTabs.forEach((x, j) => x.setAttribute('aria-selected', String(j === k)));
+    exPanels.forEach((p, j) => (p.hidden = j !== k));
+  }));
+
+  const b = document.getElementById('copy-agents')!;
+  b.addEventListener('click', async () => {
+    const label = b.lastChild!;
+    try { await navigator.clipboard.writeText(raw); label.textContent = 'Copied'; }
+    catch { label.textContent = 'Copy failed'; }
+    setTimeout(() => (label.textContent = 'Copy'), 1500);
+  });
+</script>

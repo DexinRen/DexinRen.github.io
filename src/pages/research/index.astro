@@ -1,0 +1,99 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { projects } from '../../data/projects';
+---
+<Base title="Research" description="Research projects by Dexin Ren: GPS denoising, EEG-based neurogenesis estimation, anomaly-detection failure analysis, intervention-aware traffic data, and counterfactual health explanations." wide>
+  <p class="eyebrow">Research</p>
+  <h1>Projects</h1>
+  <p class="lede">
+    The common thread is that the data decide what a model can learn. Each project began with a result that did
+    not fit and ended with a change to the data, the objective, or how we evaluate.
+  </p>
+  <p class="hint muted small">
+    <span class="hint-pointer">Hover a card for a preview; click to open it.</span>
+    <span class="hint-touch">Tap a card for a preview; tap again to open it.</span>
+  </p>
+
+  <div class="cards" id="cards">
+    {projects.map((p) => <ProjectCard p={p} />)}
+  </div>
+</Base>
+
+<style>
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
+    gap: 22px;
+    margin-top: 2rem;
+    padding-bottom: 40px;
+  }
+  .hint { margin-top: -.25rem; }
+  .hint-touch { display: none; }
+  @media (hover: none), (pointer: coarse) {
+    .hint-touch { display: inline; }
+    .hint-pointer { display: none; }
+  }
+  @media (max-width: 639px) { .cards { gap: 14px; } }
+</style>
+
+<script>
+  const grid = document.getElementById('cards')!;
+  const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>('[data-card]'));
+  const touch = window.matchMedia('(hover: none), (pointer: coarse)');
+  const phone = window.matchMedia('(max-width: 639px)');
+
+  // Equalise collapsed slot height so the grid stays tidy.
+  function sizeSlots() {
+    if (phone.matches) { grid.style.removeProperty('--slot-h'); return; }
+    let h = 0;
+    for (const c of cards) {
+      const head = c.querySelector('.head') as HTMLElement;
+      const cs = getComputedStyle(c);
+      h = Math.max(h, head.offsetHeight + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + 2);
+    }
+    grid.style.setProperty('--slot-h', `${Math.ceil(h)}px`);
+  }
+
+  // If an expanded card would run off the bottom of the viewport, lift it.
+  function fitInView(c: HTMLElement) {
+    if (phone.matches) return;
+    c.style.setProperty('--shift', '0px');
+    const head = c.querySelector('.head') as HTMLElement;
+    const inner = c.querySelector('.more-inner') as HTMLElement;
+    const r = c.getBoundingClientRect();
+    const expected = r.top + head.offsetHeight + inner.scrollHeight + 60;
+    const overflow = expected - (window.innerHeight - 16);
+    if (overflow > 0) {
+      const maxUp = Math.max(0, r.top - 76);
+      c.style.setProperty('--shift', `${-Math.min(overflow, maxUp)}px`);
+    }
+  }
+  function closeAll(except?: HTMLElement) {
+    for (const c of cards) if (c !== except) { c.classList.remove('is-open'); c.style.setProperty('--shift', '0px'); }
+  }
+
+  for (const c of cards) {
+    c.addEventListener('mouseenter', () => { if (!touch.matches) fitInView(c); });
+    c.addEventListener('mouseleave', () => { if (!touch.matches) c.style.setProperty('--shift', '0px'); });
+    c.addEventListener('focus', () => fitInView(c));
+    c.addEventListener('click', (e) => {
+      // Touch: first tap previews, second tap opens.
+      if (touch.matches && !c.classList.contains('is-open')) {
+        e.preventDefault();
+        closeAll(c);
+        c.classList.add('is-open');
+        fitInView(c);
+        if (phone.matches) setTimeout(() => c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 320);
+      }
+    });
+  }
+  document.addEventListener('click', (e) => {
+    if (!(e.target as HTMLElement).closest('[data-card]')) closeAll();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
+
+  sizeSlots();
+  window.addEventListener('resize', sizeSlots);
+  document.fonts?.ready.then(sizeSlots);
+</script>

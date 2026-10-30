@@ -1,0 +1,88 @@
+---
+// Portrait slot on Home. Until a photo is added, it shows a spinning ASCII torus
+// (after Andy Sloane's donut.c). To use a photo: put it in public/ and pass src, e.g.
+//   <Portrait src="/me.webp" alt="Dexin Ren" />
+interface Props { src?: string; alt?: string }
+const { src, alt = '' } = Astro.props;
+---
+<figure class="portrait">
+  {src ? (
+    <img src={src} alt={alt} width="240" height="240" />
+  ) : (
+    <>
+      <pre class="donut" aria-hidden="true" data-donut></pre>
+      <figcaption>Photo coming soon<span class="shy">or maybe not, ’cause I’m&nbsp;shy&nbsp;<span aria-label="winking face with tongue" role="img">😜</span></span></figcaption>
+    </>
+  )}
+</figure>
+
+<script>
+  const COLS = 40, ROWS = 24, CHAR_ASPECT = 0.6; // monospace glyph width / line height
+  const R1 = 1, R2 = 2, K2 = 5;
+  const K1y = (0.85 * ROWS * K2 * 3) / (8 * (R1 + R2)); // 0.85 leaves a margin inside the frame
+  const K1x = K1y / CHAR_ASPECT;
+  const SHADES = '.,-~:;=!*#$@';
+
+  // One frame of the torus rotated by (a, b), as text.
+  const frame = (a: number, b: number) => {
+    const out = new Array<string>(COLS * ROWS).fill(' ');
+    const zbuf = new Float32Array(COLS * ROWS);
+    const [ca, sa, cb, sb] = [Math.cos(a), Math.sin(a), Math.cos(b), Math.sin(b)];
+    for (let t = 0; t < 2 * Math.PI; t += 0.07) {
+      const [ct, st] = [Math.cos(t), Math.sin(t)];
+      for (let p = 0; p < 2 * Math.PI; p += 0.02) {
+        const [cp, sp] = [Math.cos(p), Math.sin(p)];
+        const cx = R2 + R1 * ct, cy = R1 * st;
+        const x = cx * (cb * cp + sa * sb * sp) - cy * ca * sb;
+        const y = cx * (sb * cp - sa * cb * sp) + cy * ca * cb;
+        const ooz = 1 / (K2 + ca * cx * sp + cy * sa);
+        const xp = Math.floor(COLS / 2 + K1x * ooz * x);
+        const yp = Math.floor(ROWS / 2 - K1y * ooz * y);
+        const L = cp * ct * sb - ca * ct * sp - sa * st + cb * (ca * st - ct * sa * sp);
+        const k = xp + COLS * yp;
+        if (L > 0 && yp >= 0 && yp < ROWS && xp >= 0 && xp < COLS && ooz > zbuf[k]) {
+          zbuf[k] = ooz;
+          out[k] = SHADES[Math.min(SHADES.length - 1, Math.floor(L * 8))];
+        }
+      }
+    }
+    return Array.from({ length: ROWS }, (_, r) => out.slice(r * COLS, (r + 1) * COLS).join('')).join('\n');
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-donut]').forEach((el) => {
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let a = 1.0, b = 0.6, last = 0, visible = true, raf = 0;
+    el.textContent = frame(a, b);
+    if (still) return;
+    const tick = (now: number) => {
+      if (now - last > 50) { a += 0.05; b += 0.025; el.textContent = frame(a, b); last = now; }
+      raf = visible ? requestAnimationFrame(tick) : 0;
+    };
+    new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting && !document.hidden;
+      if (visible && !raf) raf = requestAnimationFrame(tick);
+    }).observe(el);
+    document.addEventListener('visibilitychange', () => {
+      visible = !document.hidden;
+      if (visible && !raf) raf = requestAnimationFrame(tick);
+    });
+  });
+</script>
+
+<style>
+  .portrait { margin: 0; width: var(--portrait, 220px); flex: none; }
+  .portrait img,
+  .donut {
+    width: 100%; aspect-ratio: 1; border-radius: 22px; display: block;
+    background: var(--surface); border: 1px solid var(--line);
+  }
+  .portrait img { object-fit: cover; }
+  .donut {
+    margin: 0; padding: 0; overflow: hidden; display: grid; place-items: center;
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: calc(var(--portrait, 220px) / 25); line-height: 1; letter-spacing: 0;
+    color: var(--accent); white-space: pre; user-select: none;
+  }
+  figcaption { margin-top: 8px; font-size: .75rem; color: var(--ink-3); text-align: center; letter-spacing: .04em; }
+  .shy { display: block; margin-top: 2px; font-size: .68rem; font-style: italic; opacity: .85; letter-spacing: .02em; }
+</style>

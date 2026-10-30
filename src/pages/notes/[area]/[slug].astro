@@ -1,0 +1,154 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Icon from '../../../components/Icon.astro';
+import { getCollection, render } from 'astro:content';
+import index from '../../../data/wiki-index.json';
+import { familyOf } from '../../../data/notes-areas';
+import 'katex/dist/katex.min.css';
+import 'pseudocode/build/pseudocode.min.css';
+
+export async function getStaticPaths() {
+  const notes = await getCollection('wiki');
+  return notes.map((n) => {
+    const [area, slug] = n.id.split('/');
+    return { params: { area, slug }, props: { note: n } };
+  });
+}
+
+const { note } = Astro.props;
+const { Content } = await render(note);
+const all = index.notes;
+const me = all.find((n) => n.id === note.id)!;
+const byId = (id: string) => all.find((n) => n.id === id)!;
+const linksTo = me.links.map(byId);
+const linkedFrom = all.filter((n) => n.links.includes(me.id));
+const related = [...new Set([...me.related, ...all.filter((n) => n.related.includes(me.id)).map((n) => n.id)])]
+  .filter((id) => !me.links.includes(id) && !linkedFrom.some((n) => n.id === id))
+  .map(byId);
+const siblings = (await getCollection('wiki', (n) => n.data.areaSlug === note.data.areaSlug))
+  .sort((a, b) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title));
+const i = siblings.findIndex((n) => n.id === note.id);
+const prev = siblings[i - 1];
+const next = siblings[i + 1];
+const fam = familyOf(note.data.areaSlug);
+const url = (id: string) => `/notes/${id}/`;
+---
+<Base title={note.data.title} description={`${note.data.title}: notes by Dexin Ren (${note.data.area}).`}>
+  <nav class="crumbs small"><a href="/notes/">Notes</a> <span>/</span> <a href={`/notes/#${note.data.areaSlug}`}>{note.data.area}</a></nav>
+  <header class="note-head">
+    <p class="eyebrow" style={`color: var(--series-${fam.slot})`}>{note.data.area}</p>
+    <h1>{note.data.title}</h1>
+    {note.data.tags.length > 0 && <ul class="chips">{note.data.tags.map((t) => <li class="chip">#{t}</li>)}</ul>}
+  </header>
+
+  {note.data.credits.map((c) => (
+    <aside class="credit">
+      <p>{c.text}</p>
+      {(c.courseLink || c.lectureLinks.length > 0) && (
+        <p class="credit-links">
+          {c.courseLink && <a href={c.courseLink} target="_blank" rel="noopener">Course page</a>}
+          {c.lectureLinks.map((l) => <a href={l.url} target="_blank" rel="noopener">Original {l.label}</a>)}
+        </p>
+      )}
+    </aside>
+  ))}
+
+  <article class="note-body">
+    <Content />
+  </article>
+
+  {(linkedFrom.length > 0 || linksTo.length > 0 || related.length > 0) && (
+    <section class="rel">
+      {linksTo.length > 0 && (
+        <div><p class="rel-h">Links to</p><ul>{linksTo.map((n) => <li><a href={url(n.id)}>{n.title}</a></li>)}</ul></div>
+      )}
+      {linkedFrom.length > 0 && (
+        <div><p class="rel-h">Linked from</p><ul>{linkedFrom.map((n) => <li><a href={url(n.id)}>{n.title}</a></li>)}</ul></div>
+      )}
+      {related.length > 0 && (
+        <div><p class="rel-h">Related topics</p><ul>{related.map((n) => <li><a href={url(n.id)}>{n.title}</a></li>)}</ul></div>
+      )}
+    </section>
+  )}
+
+  <nav class="pn">
+    {prev ? <a class="pn-l" href={url(prev.id)}><span class="small muted">← Previous</span><span>{prev.data.title}</span></a> : <span />}
+    {next ? <a class="pn-r" href={url(next.id)}><span class="small muted">Next →</span><span>{next.data.title}</span></a> : <span />}
+  </nav>
+  <p class="small"><a href={`/notes/graph/?focus=${encodeURIComponent(note.id)}`}><Icon name="link" size={13} /> See this note in the graph</a></p>
+</Base>
+
+<script>
+  // Render ```pseudo algorithm blocks (Obsidian "pseudocode" plugin syntax) with pseudocode.js.
+  // The UMD build is loaded as a classic (non-strict) script: the ES-module path throws
+  // "attrVal is not defined" because pseudocode.js assigns an undeclared variable.
+  import pseudocodeUrl from 'pseudocode/build/pseudocode.min.js?url';
+
+  const loadClassic = (src: string) =>
+    new Promise<void>((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error(`failed to load ${src}`));
+      document.head.append(s);
+    });
+
+  const blocks = document.querySelectorAll<HTMLElement>('.note-body pre > code.language-pseudo');
+  if (blocks.length) {
+    (window as any).katex = (await import('katex')).default;
+    await loadClassic(pseudocodeUrl);
+    const pseudocode = (window as any).pseudocode;
+    blocks.forEach((code) => {
+      const pre = code.parentElement!;
+      try {
+        const html = pseudocode.renderToString(code.textContent ?? '', { lineNumber: true, noEnd: false });
+        const div = document.createElement('div');
+        div.className = 'pseudo';
+        div.innerHTML = html;
+        pre.replaceWith(div);
+      } catch (e) {
+        console.warn('pseudocode:', (e as Error).message);
+        pre.classList.add('pseudo-failed');
+      }
+    });
+  }
+</script>
+
+<style>
+  .crumbs { color: var(--ink-3); margin-bottom: 1.25rem; }
+  .crumbs a { color: var(--ink-3); text-decoration: none; }
+  .crumbs a:hover { color: var(--accent-ink); }
+  .crumbs span { margin: 0 6px; }
+  .note-head h1 { margin-bottom: .5rem; }
+  .credit { margin: 1.5rem 0 2rem; padding: 14px 18px; background: var(--ctl-soft); border-left: 3px solid var(--ctl); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: .9rem; color: var(--ink-2); }
+  .credit p { margin: 0 0 .4rem; }
+  .credit + .credit { margin-top: -1.25rem; }
+  .credit-links { display: flex; gap: 14px; flex-wrap: wrap; margin: 0 !important; }
+  .credit-links a { font-weight: 500; }
+
+  .note-body { font-size: 1rem; }
+  .note-body :global(h1) { font-size: 1.7rem; margin-top: 2.2rem; }
+  .note-body :global(h2) { font-size: 1.4rem; margin-top: 2rem; }
+  .note-body :global(h3), .note-body :global(h4) { font-size: 1.15rem; margin-top: 1.6rem; }
+  .note-body :global(h5), .note-body :global(h6) { font-size: 1rem; font-family: var(--font-sans); font-weight: 600; margin-top: 1.3rem; }
+  .note-body :global(img) { border-radius: var(--radius-sm); margin: 1.25rem auto; background: var(--paper); }
+  .note-body :global(pre) { background: var(--surface-2); padding: 12px 14px; border-radius: var(--radius-sm); overflow-x: auto; font-size: .82rem; }
+  .note-body :global(pre code) { background: none; padding: 0; }
+  .note-body :global(blockquote) { margin: 1.25rem 0; padding: .25rem 1rem; border-left: 3px solid var(--accent); color: var(--ink-2); }
+  .note-body :global(table) { display: block; overflow-x: auto; margin: 1rem 0; }
+  .note-body :global(.katex-display) { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+  .note-body :global(.katex) { font-size: 1.05em; }
+  .note-body :global(.wl-missing) { border-bottom: 1px dotted var(--ink-3); cursor: help; }
+  .note-body :global(.pseudo) { margin: 1.25rem 0; overflow-x: auto; font-size: .9rem; }
+  .note-body :global(.pseudo .ps-root) { font-family: var(--font-serif); }
+
+  .rel { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); }
+  .rel-h { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; color: var(--ctl-ink); margin: 0 0 .4rem; }
+  .rel ul { list-style: none; padding: 0; margin: 0; }
+  .rel li { margin: .25rem 0; }
+  .pn { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 2rem 0 1rem; }
+  .pn a { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); text-decoration: none; color: var(--ink); }
+  .pn a:hover { border-color: var(--ctl); }
+  .pn-r { text-align: right; }
+  @media (max-width: 639px) { .pn { grid-template-columns: 1fr; } .pn-r { text-align: left; } }
+</style>

@@ -1,0 +1,148 @@
+---
+import Icon from './Icon.astro';
+import { site, nav } from '../data/site';
+
+const path = Astro.url.pathname.replace(/\/+$/, '/') || '/';
+const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+---
+<!-- Mobile / tablet top bar (≤1023px) -->
+<header class="topbar">
+  <a class="brand" href="/">{site.name}</a>
+  <button class="icon-btn" id="nav-open" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
+    <Icon name="menu" size={22} />
+  </button>
+</header>
+<div class="scrim" id="nav-scrim" hidden></div>
+
+<aside class="sidebar" id="sidebar" aria-label="Site">
+  <div class="sb-inner">
+    <div class="sb-top">
+      <a class="sb-name" href="/">{site.name}</a>
+      <button class="icon-btn sb-close" id="nav-close" aria-label="Close menu">
+        <Icon name="close" size={22} />
+      </button>
+    </div>
+    <p class="sb-tag">{site.tagline}</p>
+
+    <nav class="sb-nav" aria-label="Main">
+      <ul>
+        {nav.map((n) => (
+          <li>
+            <a href={n.href} class:list={[{ active: isActive(n.href) }]} aria-current={isActive(n.href) ? 'page' : undefined}>
+              {n.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    <div class="sb-foot">
+      <ul class="sb-contact">
+        {site.emails.map((e) => (
+          <li><a href={e.href}><Icon name="mail" size={15} /><span>{e.label}</span></a></li>
+        ))}
+        <li><a href={site.github.href} rel="me noopener" target="_blank"><Icon name="github" size={15} /><span>{site.github.label}</span></a></li>
+      </ul>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle color theme">
+        <span class="t-sun"><Icon name="sun" size={15} /></span>
+        <span class="t-moon"><Icon name="moon" size={15} /></span>
+        <span class="t-label">Theme</span>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .sidebar {
+    position: sticky; top: 0; height: 100vh;
+    border-right: 1px solid var(--line);
+    background: var(--bg);
+    z-index: 50;
+  }
+  .sb-inner { height: 100%; display: flex; flex-direction: column; padding: 56px 28px 28px; overflow-y: auto; }
+  .sb-top { display: flex; align-items: center; justify-content: space-between; }
+  .sb-name { font-family: var(--font-serif); font-size: 1.6rem; color: var(--ink); text-decoration: none; letter-spacing: -0.01em; }
+  .sb-tag { font-size: .85rem; color: var(--ink-3); margin: .4rem 0 2.5rem; line-height: 1.45; }
+  .sb-nav ul { list-style: none; padding: 0; margin: 0; }
+  .sb-nav li { margin: 0; }
+  .sb-nav a {
+    display: block; padding: 7px 12px; margin: 0 -12px 2px; border-radius: 8px;
+    color: var(--ink-2); text-decoration: none; font-size: .95rem; position: relative;
+    transition: background .15s, color .15s;
+  }
+  .sb-nav a:hover { background: var(--ctl-soft); color: var(--ctl-ink); }
+  .sb-nav a.active { color: var(--ink); font-weight: 600; }
+  .sb-nav a.active::before { content: ''; position: absolute; left: -2px; top: 9px; bottom: 9px; width: 3px; border-radius: 3px; background: var(--accent); }
+  .sb-foot { margin-top: auto; padding-top: 2rem; }
+  .sb-contact { list-style: none; padding: 0; margin: 0 0 1rem; }
+  .sb-contact li { margin: 0; }
+  .sb-contact a { display: flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--ink-3); text-decoration: none; padding: 4px 0; word-break: break-all; }
+  .sb-contact a:hover { color: var(--accent-ink); }
+  .sb-contact :global(svg) { flex: none; }
+
+  .theme-toggle {
+    display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: .8rem;
+    color: var(--ink-3); background: transparent; border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 10px; cursor: pointer;
+  }
+  .theme-toggle:hover { color: var(--ink); border-color: var(--line-strong); }
+  .t-moon { display: none; }
+  :global(:root[data-theme='dark']) .t-sun { display: none; }
+  :global(:root[data-theme='dark']) .t-moon { display: inline; }
+
+  .icon-btn { background: transparent; border: 0; color: var(--ink); padding: 8px; margin: -8px; border-radius: 8px; cursor: pointer; display: inline-flex; }
+  .icon-btn:hover { background: var(--surface-2); }
+  .sb-close, .topbar, .scrim { display: none; }
+
+  /* ---------- tablet & phone: off-canvas drawer ---------- */
+  @media (max-width: 1023px) {
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      position: fixed; inset: 0 0 auto 0; height: 60px; padding: 0 var(--gutter);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: saturate(1.2) blur(10px); -webkit-backdrop-filter: saturate(1.2) blur(10px);
+      border-bottom: 1px solid var(--line); z-index: 40;
+    }
+    .brand { font-family: var(--font-serif); font-size: 1.3rem; color: var(--ink); text-decoration: none; }
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; height: auto; width: min(300px, 86vw);
+      transform: translateX(-102%); transition: transform .28s cubic-bezier(.2,.7,.2,1);
+      box-shadow: var(--shadow-lg); border-right: 1px solid var(--line);
+    }
+    .sidebar.open { transform: none; }
+    .sb-inner { padding: 24px 24px 28px; }
+    .sb-close { display: inline-flex; }
+    .scrim { display: block; position: fixed; inset: 0; background: rgba(30, 20, 10, .35); z-index: 45; opacity: 0; transition: opacity .2s; }
+    .scrim.show { opacity: 1; }
+    .scrim[hidden] { display: none; }
+  }
+  @media (min-width: 640px) and (max-width: 1023px) { .topbar { padding: 0 40px; } }
+</style>
+
+<script>
+  const sb = document.getElementById('sidebar')!;
+  const openBtn = document.getElementById('nav-open')!;
+  const closeBtn = document.getElementById('nav-close')!;
+  const scrim = document.getElementById('nav-scrim')!;
+  function setOpen(open: boolean) {
+    sb.classList.toggle('open', open);
+    openBtn.setAttribute('aria-expanded', String(open));
+    if (open) { scrim.hidden = false; requestAnimationFrame(() => scrim.classList.add('show')); closeBtn.focus(); }
+    else { scrim.classList.remove('show'); setTimeout(() => (scrim.hidden = true), 200); }
+    document.body.style.overflow = open ? 'hidden' : '';
+  }
+  openBtn.addEventListener('click', () => setOpen(true));
+  closeBtn.addEventListener('click', () => setOpen(false));
+  scrim.addEventListener('click', () => setOpen(false));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sb.classList.contains('open')) { setOpen(false); openBtn.focus(); } });
+  window.matchMedia('(min-width: 1024px)').addEventListener('change', (m) => { if (m.matches) setOpen(false); });
+
+  // theme toggle: cycles light <-> dark (initial value follows OS)
+  const root = document.documentElement;
+  document.getElementById('theme-toggle')!.addEventListener('click', () => {
+    const cur = root.dataset.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    root.dataset.theme = next;
+    try { localStorage.setItem('theme', next); } catch {}
+  });
+</script>

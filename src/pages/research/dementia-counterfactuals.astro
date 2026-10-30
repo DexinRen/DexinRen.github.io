@@ -1,0 +1,56 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProjectHeader from '../../components/ProjectHeader.astro';
+import CardVisual from '../../components/CardVisual.astro';
+
+const steps = [
+  { n: '1', t: 'Compress', d: 'Train an encoder–decoder that maps a patient’s full risk-factor profile to a latent state and back.' },
+  { n: '2', t: 'Learn to complete', d: 'Train a JEPA-style predictor to infer the full latent state from a profile with some features masked out.' },
+  { n: '3', t: 'Edit one factor', d: 'DiCE proposes a change (e.g. lower BMI). Keep the edited features, mask the ones that should respond, and let the predictor complete the latent state.' },
+  { n: '4', t: 'Decode & re-score', d: 'Decode a full, internally consistent profile, re-run the risk model, and attribute the change in risk to each input.' },
+];
+---
+<Base title="Correlation-aware counterfactuals" description="Making counterfactual lifestyle recommendations from a dementia risk model respect correlations between risk factors.">
+  <ProjectHeader
+    title="Correlation-aware counterfactuals"
+    subtitle="Making “what should I change?” advice from a dementia risk model physiologically plausible."
+    status="Early stage · in progress"
+    role="Research assistant (continuing a project from a graduated student)"
+    period="2026 – present"
+    tags={['Counterfactual explanations', 'Representation learning', 'Tabular health data', 'APOE ε4']}
+    tldr={[
+      'A dementia risk calculator is most useful when it tells people <strong>what to change</strong>. Counterfactual tools such as DiCE search for the smallest input change that lowers predicted risk.',
+      'DiCE edits features <strong>independently</strong>, but lowering BMI usually also moves blood pressure and activity level. Edits that ignore this can be implausible.',
+      'Plan: learn the joint structure of risk factors in a latent space and let it <strong>fill in the correlated changes</strong> before re-scoring risk.',
+    ]}
+  />
+
+  <figure class="dv panel"><CardVisual name="dementia" /><figcaption>Idea sketch: an edit to one factor propagates to correlated factors before risk is recomputed.</figcaption></figure>
+
+  <h2>Current step</h2>
+  <p>
+    I am measuring how the model’s input features co-vary, including BMI, blood pressure and physical activity, to see where
+    independent edits break realistic structure and which features the completion model must handle.
+  </p>
+
+  <h2>Planned method</h2>
+  <ol class="plan">
+    {steps.map((s) => (
+      <li><span class="n">{s.n}</span><div><strong>{s.t}.</strong> {s.d}</div></li>
+    ))}
+  </ol>
+  <p>
+    The goal is a per-feature risk attribution computed on <em>realistic</em> counterfactual profiles, which should give more accurate and more
+    actionable lifestyle suggestions than independent feature edits.
+  </p>
+
+  <p class="muted small">Work in progress. Methods and results will be added as they mature.</p>
+</Base>
+
+<style>
+  .dv { max-width: 520px; }
+  .plan { list-style: none; padding: 0; margin: 1.25rem 0 1.5rem; display: grid; gap: 10px; counter-reset: none; }
+  .plan li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; margin: 0; color: var(--ink-2); font-size: .95rem; }
+  .plan strong { color: var(--ink); }
+  .n { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; font-size: .85rem; }
+</style>

@@ -1,0 +1,174 @@
+---
+import Base from '../layouts/Base.astro';
+import PubItem from '../components/PubItem.astro';
+import Icon from '../components/Icon.astro';
+import Portrait from '../components/Portrait.astro';
+import { site } from '../data/site';
+import { pubs } from '../data/publications';
+import { news } from '../data/news';
+import { projects } from '../data/projects';
+
+const selected = pubs.filter((p) => p.selected);
+const steps = ['Unexpected result', 'Question the assumptions', 'Competing hypotheses', 'Controlled comparison', 'Failure mode found', 'Redesign data / objective'];
+---
+<Base>
+  <section class="hero">
+    <div class="hero-text">
+    <p class="eyebrow">{site.role}</p>
+    <h1>{site.name}</h1>
+    <p class="lede">
+      I study <em>why</em> machine-learning models generalize or fail, focusing on how data distributions,
+      learning objectives, representations and inductive biases interact. I am most interested in settings where the data are limited, shifted,
+      synthetic or otherwise imperfect.
+    </p>
+    <ul class="status-list">
+      {site.status.map((t, i) => <li class="status"><span class:list={['dot', { alt: i > 0 }]}></span>{t}</li>)}
+    </ul>
+    <ul class="links">
+      <li><a class="btn" href="/cv/"><Icon name="file" />CV</a></li>
+      <li><a class="btn ghost" href={site.emails[0].href}><Icon name="mail" />Email</a></li>
+      <li><a class="btn ghost" href={site.github.href} target="_blank" rel="me noopener"><Icon name="github" />GitHub</a></li>
+    </ul>
+    </div>
+    <Portrait />
+  </section>
+
+  <section>
+    <h2>About</h2>
+    <p>
+      I am an M.S. student in Computer Science at the University of Southern California and a research assistant at
+      <a href="https://infolab.usc.edu/" target="_blank" rel="noopener">USC InfoLab</a>. I studied Mathematics + Computer Science at the
+      University of Illinois Urbana-Champaign.
+    </p>
+    <p>
+      My projects span GPS trajectories, EEG and mobility logs, but the method is the same each time. When a model
+      behaves unexpectedly, I treat it as a question about the data and the training setup, not as tuning noise.
+      In <a href="/research/rectifiedtraj/">RectifiedTraj</a>, direct-coordinate models failed because of the spatial scale
+      of their inputs, and predicting the correction fixed it. In <a href="/research/neurogenesis-gnn/">NeurogenesisGNN</a>, 13,000 EEG clips amounted to
+      only 30 independent patients, and the model and the evaluation had to be designed around that.
+    </p>
+  </section>
+
+  <section class="why">
+    <h2>Why I do research</h2>
+    <p>
+      I treat every project like something I am raising. I design it carefully, look after it, and keep working on it until it is
+      as good as I can make it, and then a little better. What I enjoy most is solving problems in creative ways and watching a
+      system I built become clean and complete. I have ADHD and autism, and I am proud of both: they are part of why I love
+      finding creative routes through hard problems.
+    </p>
+    <p>
+      The best moments are the ones I did not plan: an old design turns out to answer a new question, or a problem I had not
+      foreseen has already been solved by something I built earlier. Learning, talking with great minds through their work,
+      designing complex systems, and running into questions no one had asked yet: that whole process gives me deep joy, and at
+      times it moves me to tears.
+    </p>
+
+    <h3>How ideas arrive</h3>
+    <p>
+      My mind rarely holds one idea at a time. Ideas keep surfacing, and every so often several of them lock together, like
+      instruments in a symphony finding the same key. On a long drive recently I was turning over JEPA, a self-supervised method
+      that predicts hidden parts of an input from the visible parts. Within minutes it had connected to two of my projects. For the
+      dementia-risk project, an encoder with JEPA-style masked completion could fill in the risk factors that have to move together
+      when DiCE suggests a change, so the counterfactuals stay realistic. It also opened a new angle on my traffic simulation work.
+      Somewhere on the same road I designed a pool game in which a devil cat sits on the table, bites the player, knocks the balls
+      around and drags pocketed balls back out.
+    </p>
+    <p>
+      Living like this feels like travelling through a high-dimensional space: millions of directions, and every one of them
+      brings me joy. Research is how I turn a few of them into something careful and complete.
+    </p>
+  </section>
+
+  <section>
+    <h2>Research interests</h2>
+    <ul class="interests">
+      <li><strong>Data-centric ML.</strong> Designing representations, objectives and evaluation around how the data were generated.</li>
+      <li><strong>Robustness & distribution shift.</strong> Transfer across datasets, sampling rates, geographies and from simulation to the real world.</li>
+      <li><strong>Failure analysis.</strong> Controlled comparisons that separate architecture, objective, representation and training dynamics.</li>
+      <li><strong>Learning with difficult data.</strong> Small samples with high dimensionality, heterogeneous subjects, and subgroups that behave differently.</li>
+    </ul>
+
+    <figure class="flow" aria-label="My research loop">
+      <ol>
+        {steps.map((s, i) => <li><span class="n">{i + 1}</span><span class="s">{s}</span></li>)}
+      </ol>
+      <figcaption>How a project usually unfolds for me.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>News</h2>
+    <ul class="news">
+      {news.map((n) => <li><time>{n.date}</time><span set:html={n.html} /></li>)}
+    </ul>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Selected publications</h2><a href="/publications/">All publications →</a></div>
+    {selected.map((p) => <PubItem pub={p} compact />)}
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Projects</h2><a href="/research/">All projects →</a></div>
+    <ul class="proj-list">
+      {projects.map((p) => (
+        <li>
+          <a href={`/research/${p.slug}/`}>
+            <span class="pt">{p.title}</span>
+            <span class="ps">{p.subtitle}</span>
+          </a>
+          <span class="pst">{p.status}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>
+
+<style>
+  .hero { display: flex; gap: clamp(24px, 4vw, 48px); align-items: center; }
+  .hero-text { flex: 1 1 auto; min-width: 0; }
+  .hero :global(.portrait) { --portrait: clamp(180px, 22vw, 230px); }
+  @media (max-width: 760px) {
+    .hero { flex-direction: column-reverse; align-items: flex-start; gap: 20px; }
+    .hero :global(.portrait) { --portrait: 150px; }
+  }
+  .hero h1 { font-size: clamp(2.4rem, 1.8rem + 2.6vw, 3.4rem); margin-bottom: .3em; }
+  .hero .lede em { font-family: var(--font-serif); font-size: 1.08em; }
+  .status-list { list-style: none; padding: 0; margin: .6rem 0 .25rem; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .status { display: inline-flex; align-items: center; gap: 10px; font-size: .9rem; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; margin: 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ctl); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ctl) 22%, transparent); flex: none; }
+  .dot.alt { background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 20%, transparent); }
+  .why p:first-of-type { font-family: var(--font-serif); font-size: 1.15rem; color: var(--ink); line-height: 1.55; }
+  .interests { list-style: none; padding: 0; }
+  .interests li { padding: .5rem 0 .5rem 1.1rem; position: relative; color: var(--ink-2); }
+  .interests li::before { content: ''; position: absolute; left: 0; top: 1.05em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .interests strong { color: var(--ink); font-weight: 600; }
+
+  .flow { margin: 1.75rem 0 0; }
+  .flow ol { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; counter-reset: s; }
+  .flow li { margin: 0; position: relative; padding: 0 8px 0 0; }
+  .flow li:not(:last-child)::after { content: ''; position: absolute; top: 13px; left: 30px; right: 4px; height: 1px; background: var(--line-strong); }
+  .flow .n { position: relative; z-index: 1; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line-strong); font-size: .75rem; color: var(--ink-2); }
+  .flow li:last-child .n { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .flow .s { display: block; font-size: .78rem; color: var(--ink-2); margin-top: 8px; line-height: 1.35; }
+  @media (max-width: 639px) {
+    .flow ol { grid-template-columns: 1fr; gap: 10px; }
+    .flow li { display: flex; align-items: center; gap: 12px; }
+    .flow li:not(:last-child)::after { top: 26px; left: 13px; right: auto; width: 1px; height: 10px; }
+    .flow .s { margin: 0; font-size: .88rem; }
+  }
+
+  .news { list-style: none; padding: 0; }
+  .news li { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; padding: .45rem 0; border-bottom: 1px dashed var(--line); color: var(--ink-2); font-size: .95rem; }
+  .news time { color: var(--ink-3); font-size: .82rem; padding-top: .15em; font-variant-numeric: tabular-nums; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .sec-head a { font-size: .85rem; white-space: nowrap; }
+  .proj-list { list-style: none; padding: 0; }
+  .proj-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+  .proj-list a { text-decoration: none; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+  .proj-list .pt { font-family: var(--font-serif); font-size: 1.15rem; color: var(--ink); }
+  .proj-list a:hover .pt { color: var(--accent-ink); }
+  .proj-list .ps { color: var(--ink-3); font-size: .88rem; }
+  .proj-list .pst { font-size: .75rem; color: var(--ink-3); white-space: nowrap; }
+</style>

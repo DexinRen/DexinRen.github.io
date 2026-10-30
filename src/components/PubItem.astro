@@ -1,0 +1,74 @@
+---
+import type { Pub } from '../data/publications';
+interface Props { pub: Pub; compact?: boolean }
+const { pub, compact = false } = Astro.props;
+const id = pub.bibtex.match(/\{([^,]+),/)?.[1] ?? pub.title;
+---
+<article class="pub">
+  <div class="venue">
+    <span class="v">{pub.venueShort}</span>
+    {pub.status && <span class="st">{pub.status}</span>}
+  </div>
+  <div class="body">
+    <h3 class="pt">{pub.project ? <a href={`/research/${pub.project}/`}>{pub.title}</a> : pub.title}</h3>
+    <p class="au">
+      {pub.authors.map((a, i) => (
+        <>
+          {a === 'Dexin Ren' ? <strong>{a}</strong> : a}
+          {i < pub.authors.length - 1 ? ', ' : ''}
+        </>
+      ))}
+    </p>
+    {!compact && <p class="vn">{pub.venue} · {pub.type}</p>}
+    <div class="pl">
+      {pub.links.map((l) => <a class="plink" href={l.href} target={l.href.startsWith('http') ? '_blank' : undefined} rel="noopener">{l.label}</a>)}
+      {!compact && (
+        <details class="bib">
+          <summary class="plink">BibTeX</summary>
+          <div class="bib-box">
+            <pre id={`bib-${id}`}>{pub.bibtex}</pre>
+            <button type="button" class="copy" data-copy={`bib-${id}`}>Copy</button>
+          </div>
+        </details>
+      )}
+    </div>
+  </div>
+</article>
+
+<style>
+  .pub { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 20px; padding: 20px 0; border-top: 1px solid var(--line); }
+  .pub:first-of-type { border-top: 0; }
+  .venue { display: flex; flex-direction: column; gap: 6px; padding-top: 3px; }
+  .v { font-size: .8rem; font-weight: 600; color: var(--accent-ink); line-height: 1.35; }
+  .st { font-size: .72rem; color: var(--ink-3); }
+  .pt { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 500; margin: 0 0 .35rem; line-height: 1.35; }
+  .pt a { color: var(--ink); text-decoration: none; }
+  .pt a:hover { color: var(--accent-ink); }
+  .au { font-size: .88rem; color: var(--ink-2); margin: 0 0 .2rem; }
+  .au strong { color: var(--ink); font-weight: 600; }
+  .vn { font-size: .82rem; color: var(--ink-3); font-style: italic; margin: 0 0 .2rem; }
+  .pl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .55rem; align-items: flex-start; }
+  .plink { font-size: .75rem; font-weight: 500; padding: 3px 10px; border: 1px solid var(--ctl); border-radius: 999px; color: var(--ctl-ink); text-decoration: none; cursor: pointer; list-style: none; }
+  .plink::-webkit-details-marker { display: none; }
+  .plink:hover { background: var(--ctl); border-color: var(--ctl); color: var(--on-ctl); }
+  .bib { flex-basis: 100%; }
+  .bib summary { display: inline-block; }
+  .bib[open] summary { background: var(--ctl); border-color: var(--ctl); color: var(--on-ctl); display: inline-block; }
+  .bib-box { position: relative; margin-top: 8px; }
+  .bib pre { font: .74rem/1.55 var(--font-mono); background: var(--surface-2); border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 0; color: var(--ink-2); }
+  .copy { position: absolute; top: 6px; right: 6px; font: .7rem var(--font-sans); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-2); cursor: pointer; }
+  @media (max-width: 639px) {
+    .pub { grid-template-columns: 1fr; gap: 6px; }
+    .venue { flex-direction: row; align-items: baseline; gap: 10px; }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('button[data-copy]').forEach((b) => {
+    if (b.dataset.bound) return; b.dataset.bound = '1';
+    b.addEventListener('click', async () => {
+      const t = document.getElementById(b.dataset.copy!)?.textContent ?? '';
+      try { await navigator.clipboard.writeText(t); b.textContent = 'Copied'; setTimeout(() => (b.textContent = 'Copy'), 1500); } catch { b.textContent = 'Select & copy'; }
+    });
+  });
+</script>

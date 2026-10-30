@@ -1,0 +1,91 @@
+---
+// Qualitative study for RectifiedTraj: one large panel with method tabs on top (click to switch).
+// Panels come from the extended paper's qualitative figure; all are painted in one colour so that
+// line width (= each trajectory's error) is the only thing that changes between methods.
+// Images are alpha masks in public/media/rectifiedtraj/qual/, loaded when their tab is first opened.
+interface Item { key: string; label: string; mean10: number | null; online10: number | null; mean2m: number | null; causal: boolean }
+interface Props { items: Item[]; caption: string }
+const { items, caption } = Astro.props;
+const base = '/media/rectifiedtraj/qual';
+const fmt = (v: number | null) => (v == null ? 'N/A' : `${v.toFixed(2)} m`);
+const note = (it: Item) =>
+  it.mean10 == null
+    ? `${it.label}: the reference every method is scored against.`
+    : `${it.label}${it.causal ? ' (causal)' : ''}: ${fmt(it.mean10)} mean error at 10 s` +
+      (it.online10 != null ? `, ${fmt(it.online10)} online` : '') +
+      (it.mean2m != null ? `; ${fmt(it.mean2m)} at 2 min.` : '.');
+---
+<figure class="tt" data-tt>
+  <div class="tabs" role="tablist" aria-label="Choose a method">
+    {items.map((it, i) => (
+      <button type="button" role="tab" class="tab" aria-selected={i === 0 ? 'true' : 'false'} data-i={i}>{it.label}</button>
+    ))}
+  </div>
+  <div class="stage">
+    {items.map((it, i) => (
+      <div
+        class:list={['layer', { on: i === 0 }]}
+        role="img"
+        aria-label={`${it.label} trajectories`}
+        data-src={`${base}/${it.key}.webp`}
+        style={i === 0 ? `--img: url(${base}/${it.key}.webp)` : undefined}
+      />
+    ))}
+  </div>
+  <p class="note" aria-live="polite">{note(items[0])}</p>
+  <figcaption>{caption}</figcaption>
+  <script type="application/json" class="tt-notes" set:html={JSON.stringify(items.map(note))} />
+</figure>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-tt]').forEach((fig) => {
+    const tabs = Array.from(fig.querySelectorAll<HTMLButtonElement>('.tab'));
+    const layers = Array.from(fig.querySelectorAll<HTMLElement>('.layer'));
+    const notes = JSON.parse(fig.querySelector('.tt-notes')!.textContent || '[]') as string[];
+    const note = fig.querySelector('.note')!;
+    const load = (k: number) => {
+      const l = layers[k];
+      if (l && !l.style.getPropertyValue('--img')) l.style.setProperty('--img', `url(${l.dataset.src})`);
+    };
+    const show = (k: number) => {
+      [k, k + 1, k - 1].forEach(load); // current panel plus its neighbours
+      tabs.forEach((t, j) => t.setAttribute('aria-selected', String(j === k)));
+      layers.forEach((l, j) => l.classList.toggle('on', j === k));
+      note.textContent = notes[k] ?? '';
+    };
+    tabs.forEach((t, k) => t.addEventListener('click', () => show(k)));
+    fig.querySelector('.tabs')!.addEventListener('keydown', (e) => {
+      const ev = e as KeyboardEvent;
+      const cur = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+      const step = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0;
+      if (!step) return;
+      const k = (cur + step + tabs.length) % tabs.length;
+      show(k); tabs[k].focus();
+    });
+    load(1);
+  });
+</script>
+
+<style>
+  .tt { margin: 1.5rem 0 2.5rem; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tab {
+    font: inherit; font-size: .78rem; padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--line-strong); background: transparent; color: var(--ink-2); cursor: pointer;
+  }
+  .tab:hover { color: var(--ink); border-color: var(--ink-3); }
+  .tab[aria-selected='true'] { background: var(--ctl); border-color: var(--ctl); color: var(--on-ctl); }
+  /* the panel fills the column edge to edge: no inner padding, no letterboxing */
+  .stage {
+    position: relative; aspect-ratio: 1 / 1; border-radius: var(--radius); overflow: hidden;
+    background: var(--surface); border: 1px solid var(--line);
+  }
+  .layer {
+    position: absolute; inset: 0; opacity: 0; transition: opacity .45s ease;
+    background: var(--accent);
+    -webkit-mask: var(--img) center / contain no-repeat; mask: var(--img) center / contain no-repeat;
+  }
+  .layer.on { opacity: 1; }
+  .note { font-size: .88rem; color: var(--ink-2); margin: 10px 0 0; min-height: 1.5em; }
+  figcaption { font-size: .82rem; color: var(--ink-3); margin-top: 6px; }
+</style>

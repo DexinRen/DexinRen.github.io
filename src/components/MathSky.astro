@@ -1,0 +1,167 @@
+---
+// Background "shooting stars": formulas from my own notes and papers drift diagonally through the
+// empty margins beside the text column and, near the end of the fall, burn up into their own symbols. KaTeX renders them at build time into /math-sky.json
+// (src/pages/math-sky.json.ts); the page only fetches that file on wide screens without reduced motion.
+import 'katex/dist/katex.min.css';
+---
+<div class="sky" aria-hidden="true" data-sky></div>
+
+<script>
+  const sky = document.querySelector<HTMLElement>('[data-sky]');
+  const still = matchMedia('(prefers-reduced-motion: reduce)');
+  const wide = matchMedia('(min-width: 1200px)');
+  let formulas: string[] = [];
+  const load = async () => {
+    if (formulas.length) return true;
+    try { formulas = await (await fetch('/math-sky.json')).json(); } catch { formulas = []; }
+    return formulas.length > 0;
+  };
+  if (sky) {
+    let timer = 0, last = -1, live = 0;
+
+    // Free horizontal bands left and right of the text column, in viewport px.
+    const gutters = () => {
+      const col = document.querySelector('.main > .content')?.getBoundingClientRect();
+      const side = document.querySelector('.sidebar, aside[class*="side"]')?.getBoundingClientRect();
+      if (!col) return [];
+      const leftEdge = side ? side.right : 0;
+      return [
+        [leftEdge + 16, col.left - 24],
+        [col.right + 24, window.innerWidth - 16],
+      ].filter(([a, b]) => b - a >= 170);
+    };
+
+    const launch = () => {
+      const bands = gutters();
+      if (!bands.length || live >= 1 || document.hidden) return;
+      const [a, b] = bands[Math.floor(Math.random() * bands.length)];
+      let k = Math.floor(Math.random() * formulas.length);
+      if (k === last) k = (k + 1) % formulas.length;
+      last = k;
+
+      // dir = +1: falls down-right, the formula reads along the path and its end is the head.
+      // dir = -1: falls down-left, the formula reads up-right (never upside down) and its start is the head.
+      const dir = Math.random() < 0.5 ? -1 : 1;
+      const star = document.createElement('div');
+      star.className = `star ${dir > 0 ? 'head-end' : 'head-start'}`;
+      star.innerHTML = `<span class="f">${formulas[k]}</span><span class="trail"><span class="streak"></span></span>`;
+      sky.append(star);
+      const w = star.offsetWidth, h = star.offsetHeight;
+      const room = b - a, vh = window.innerHeight;
+
+      // Steep, long fall: pick an angle, then the longest path that still fits the band horizontally.
+      let theta = (36 + Math.random() * 14) * Math.PI / 180; // shallow enough to read, steep enough to fall
+      let scale = 1, travel = 0;
+      for (let tries = 0; tries < 4; tries++) {
+        scale = Math.min(1, (room * 0.6) / (w * Math.cos(theta) + h * Math.sin(theta)));
+        const foot = scale * (w * Math.cos(theta) + h * Math.sin(theta));
+        travel = Math.min(vh * (0.75 + Math.random() * 0.35), (room - foot) / Math.cos(theta));
+        if (travel > vh * 0.3) break;
+        theta = Math.min(theta + 5 * Math.PI / 180, 60 * Math.PI / 180);
+      }
+      const foot = scale * (w * Math.cos(theta) + h * Math.sin(theta));
+      const dx = dir * travel * Math.cos(theta), dy = travel * Math.sin(theta);
+      const lo = a + foot / 2 + Math.max(0, -dx), hi = b - foot / 2 - Math.max(0, dx);
+      const cx = lo + Math.random() * Math.max(0, hi - lo);
+      const cy = vh * (-0.05 + Math.random() * 0.3);
+      const alpha = dir > 0 ? theta : -theta; // radians; text rotation
+      const at = (x: number, y: number) =>
+        `translate(${x - w / 2}px, ${y - h / 2}px) rotate(${alpha}rad) scale(${scale})`;
+
+      live++;
+      // Fly most of the path at full brightness, then burn up into the formula's own symbols.
+      const breakAt = 0.8;
+      const flight = Math.max(1800, Math.min(4500, (travel * breakAt / 150) * 1000)); // ~150 px/s
+      const anim = star.animate(
+        [
+          { transform: at(cx, cy), opacity: 0 },
+          { opacity: 0.95, offset: 0.15 },
+          { transform: at(cx + dx * breakAt, cy + dy * breakAt), opacity: 0.95 },
+        ],
+        // constant speed: no slowing down before the burst
+        { duration: flight, easing: 'linear', fill: 'forwards' },
+      );
+      anim.onfinish = () => burnUp(star, alpha, dx / travel, dy / travel, (travel * breakAt) / flight);
+    };
+
+    // Split the formula into its visible glyphs (KaTeX leaf spans) and let them drift apart and fade.
+    const burnUp = (star: HTMLElement, alpha: number, ux: number, uy: number, speed: number) => {
+      const leaves = Array.from(star.querySelectorAll<HTMLElement>('.katex-html span'))
+        .filter((el) => !el.children.length && (el.textContent ?? '').trim().length > 0);
+      const pick = leaves.length > 14 ? leaves.filter((_, i) => i % Math.ceil(leaves.length / 14) === 0) : leaves;
+      const color = getComputedStyle(star).color;
+      const frags = pick.map((leaf) => {
+        const r = leaf.getBoundingClientRect();
+        const cs = getComputedStyle(leaf);
+        const f = document.createElement('span');
+        f.className = 'frag';
+        f.textContent = leaf.textContent;
+        Object.assign(f.style, {
+          left: `${r.left + r.width / 2}px`, top: `${r.top + r.height / 2}px`,
+          fontFamily: cs.fontFamily, fontSize: cs.fontSize, fontStyle: cs.fontStyle, fontWeight: cs.fontWeight, color,
+        });
+        sky.append(f);
+        return f;
+      });
+      star.animate([{ opacity: 0.95 }, { opacity: 0 }], { duration: 90, fill: 'forwards' }).onfinish = () => star.remove();
+      let left = frags.length;
+      if (!left) { live--; return; }
+      frags.forEach((f) => {
+        // keep some forward momentum, scatter sideways, tumble a little
+        // fragments leave at the star's own speed and then slow down (ease-out starts ~4x its mean speed)
+        const dur = 1100 + Math.random() * 600;
+        const fwd = (speed * dur / 4) * (0.8 + Math.random() * 0.4), side = (Math.random() - 0.5) * 70;
+        const tx = ux * fwd - uy * side, ty = uy * fwd + ux * side;
+        const spin = (Math.random() - 0.5) * 120;
+        f.animate(
+          [
+            { transform: `translate(-50%, -50%) rotate(${alpha}rad)`, opacity: 0.95 },
+            { opacity: 0.85, offset: 0.5 },
+            { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) rotate(calc(${alpha}rad + ${spin}deg)) scale(0.8)`, opacity: 0 },
+          ],
+          { duration: dur, easing: 'cubic-bezier(.15,.6,.35,1)' },
+        ).onfinish = () => { f.remove(); if (--left === 0) live--; };
+      });
+    };
+
+    const schedule = async () => {
+      clearTimeout(timer);
+      if (still.matches || !wide.matches || !(await load())) return;
+      timer = window.setTimeout(() => { launch(); schedule(); }, 6000 + Math.random() * 4000);
+    };
+    [still, wide].forEach((m) => m.addEventListener('change', schedule));
+    document.addEventListener('visibilitychange', schedule);
+    window.setTimeout(async () => { if (!still.matches && wide.matches && (await load())) launch(); }, 900);
+    schedule();
+  }
+</script>
+
+<style>
+  .sky { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .sky :global(.star) {
+    --c: color-mix(in srgb, var(--accent) 78%, var(--ink-2));
+    position: absolute; top: 0; left: 0; transform-origin: 50% 50%;
+    white-space: nowrap; font-size: 15px; line-height: 1;
+    color: var(--c);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent);
+    opacity: 0; will-change: transform, opacity;
+  }
+  .sky :global(.star .katex) { font-size: 1em; }
+  .sky :global(.frag) {
+    position: absolute; line-height: 1; white-space: nowrap; will-change: transform, opacity;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  /* tail behind the head: a long fading streak */
+  .sky :global(.trail) {
+    position: absolute; top: 50%; width: 220px; height: 2px; margin-top: -1px;
+    
+  }
+  .sky :global(.head-end .trail) { right: calc(100% + 6px); }   /* tail on the left */
+  .sky :global(.head-start .trail) { left: calc(100% + 6px); }        /* tail on the right */
+  .sky :global(.streak) {
+    position: absolute; inset: 50% 0 auto 0; height: 1.5px; margin-top: -0.75px; border-radius: 2px;
+    background: linear-gradient(to var(--away, left), var(--c), transparent 90%); opacity: .8;
+  }
+  .sky :global(.head-end .streak) { --away: left; }
+  .sky :global(.head-start .streak) { --away: right; }
+</style>

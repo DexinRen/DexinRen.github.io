@@ -1,0 +1,60 @@
+---
+import Base from '../../layouts/Base.astro';
+import index from '../../data/wiki-index.json';
+import { areas, families, familyOf } from '../../data/notes-areas';
+const famSlot = Object.fromEntries(areas.map((a) => [a.slug, familyOf(a.slug).slot]));
+const payload = JSON.stringify({ notes: index.notes, famSlot });
+---
+<Base title="Notes graph" description="A graph of Dexin Ren's notes, linked by references and tags." wide>
+  <a class="backlink" href="/notes/">← Notes</a>
+  <h1>Notes graph</h1>
+  <p class="lede">Each circle is a note, coloured by field. Solid lines join linked or related topics; small grey nodes are shared tags. <span class="hint-p">Hover to highlight, click to open, scroll to zoom, drag to move.</span><span class="hint-t">Tap a note to highlight it, tap again to open; pinch to zoom.</span></p>
+
+  <div class="g-wrap">
+    <canvas id="g" aria-label="Interactive graph of notes. The same notes are listed on the Notes page."></canvas>
+    <div class="g-ctl">
+      <button type="button" id="zin" aria-label="Zoom in">+</button>
+      <button type="button" id="zout" aria-label="Zoom out">−</button>
+      <button type="button" id="zreset" aria-label="Reset view">⟲</button>
+    </div>
+    <div id="g-panel" class="g-panel" hidden></div>
+  </div>
+  <ul class="g-legend">
+    {families.map((f) => <li><span class="sw" style={`--c: var(--series-${f.slot})`} />{f.label}</li>)}
+    <li><span class="sw tag" />Tag</li>
+    <li><span class="ln" />Link between notes</li>
+  </ul>
+  <p class="small muted">Prefer a list? <a href="/notes/">Browse all notes by area.</a></p>
+  <script type="application/json" id="g-data" set:html={payload} />
+</Base>
+
+<script>
+  import { mountGraph } from '../../scripts/notes-graph';
+  const { notes, famSlot } = JSON.parse(document.getElementById('g-data')!.textContent!);
+  const api = mountGraph(document.getElementById('g') as HTMLCanvasElement, notes, famSlot, document.getElementById('g-panel')!);
+  document.getElementById('zin')!.addEventListener('click', () => api.zoom(1.3));
+  document.getElementById('zout')!.addEventListener('click', () => api.zoom(1 / 1.3));
+  document.getElementById('zreset')!.addEventListener('click', () => api.reset());
+  const focus = new URLSearchParams(location.search).get('focus');
+  if (focus) api.focus(focus);
+  // redraw with new colours when the theme changes
+  new MutationObserver(() => location.reload()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+</script>
+
+<style>
+  .g-wrap { position: relative; margin-top: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+  #g { display: block; width: 100%; height: min(72vh, 720px); touch-action: none; cursor: grab; }
+  .g-ctl { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .g-ctl button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font-size: 1.05rem; cursor: pointer; }
+  .g-ctl button:hover { border-color: var(--ctl); }
+  .g-panel { position: absolute; left: 10px; bottom: 10px; max-width: min(320px, calc(100% - 20px)); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 10px 12px; box-shadow: var(--shadow-lg); }
+  .g-panel :global(.gp-t) { font-family: var(--font-serif); font-size: 1.05rem; margin: 0 0 .5rem; }
+  .g-legend { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .82rem; color: var(--ink-2); margin: .9rem 0; }
+  .g-legend li { display: inline-flex; align-items: center; gap: 7px; margin: 0; }
+  .sw { width: 11px; height: 11px; border-radius: 50%; background: var(--c); display: inline-block; }
+  .sw.tag { width: 7px; height: 7px; background: var(--series-ref); }
+  .ln { width: 18px; height: 2px; background: var(--line-strong); display: inline-block; }
+  .hint-t { display: none; }
+  @media (hover: none), (pointer: coarse) { .hint-t { display: inline; } .hint-p { display: none; } }
+  @media (max-width: 639px) { #g { height: 68vh; } }
+</style>

@@ -1,0 +1,21 @@
+{
+  "name": "dexin-website",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "^5.13.0",
+    "d3-force": "^3.0.0",
+    "github-slugger": "^2.0.0",
+    "katex": "^0.16.47",
+    "pseudocode": "2.4",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
+    "unist-util-visit": "^5.2.0"
+  }
+}

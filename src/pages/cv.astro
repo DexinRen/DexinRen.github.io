@@ -1,0 +1,131 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import { site } from '../data/site';
+import { pubs } from '../data/publications';
+
+const education = [
+  { school: 'University of Southern California', degree: 'M.S. Computer Science (General)', when: 'Jan 2025 – Dec 2026', note: 'GPA 3.7 / 4.0' },
+  { school: 'University of Illinois Urbana-Champaign', degree: 'B.S. Mathematics + Computer Science', when: 'Aug 2021 – May 2024', note: 'GPA 3.62 / 4.0 · High Distinction' },
+];
+
+const experience = [
+  {
+    title: 'RectifiedTraj: Causal GPS Trajectory Denoising', slug: 'rectifiedtraj',
+    role: 'Researcher / First-Author Lead, USC InfoLab', when: 'Aug 2025 – Sep 2026',
+    bullets: [
+      'Led first-author research from problem formulation through model and data-pipeline design, experiments, failure analysis, and manuscript preparation.',
+      'Found that direct-coordinate prediction fails as trajectory scale grows; controlled comparisons showed that predicting corrections stays stable as input conditions change.',
+      'Designed robustness evaluations across datasets, geographies, simulators, noise conditions, and sampling intervals.',
+      'Analyzed errors at the start of causal prediction windows and evaluated a method that reduces them, measuring the accuracy–throughput trade-off.',
+      'Raised real-world BlogWatcher accuracy from 44.63% to 57.05% (+12.42 pp); CPU-only inference takes about 124 ms per 256-point chunk on a Pixel 4a.',
+    ],
+  },
+  {
+    title: 'HAYSTAC: Human Mobility Anomaly Detection', slug: 'haystac',
+    role: 'Research Team Member, USC InfoLab & Novateur Research Solutions', when: 'Jun 2026 – Sep 2026',
+    bullets: [
+      'Investigated why a specialized mobility-anomaly Transformer underperformed a simpler MLP baseline, using controlled model comparisons.',
+      'Found that architecture explained only part of the gap; extended the investigation to input representations, training objectives, and synthetic supervision.',
+      'Identified a model-selection problem: losses computed on synthetic anomalies can be poorly aligned with performance on evaluation anomalies.',
+      'Redesigned the training data pipeline, roughly halving memory use and speeding up training 2–12× depending on configuration.',
+    ],
+  },
+  {
+    title: 'NeurogenesisGNN: EEG-Based Neurogenesis Estimation', slug: 'neurogenesis-gnn',
+    role: 'Part-Time Research Assistant, USC IMSC & Bonaguidi Lab', when: 'Jun 2026 – present',
+    bullets: [
+      'Built the end-to-end pipeline for estimating patient-level hippocampal neurogenesis from EEG and clinical variables, adapting an existing representation model.',
+      'Recognized that ~13,000 EEG clips represented only 30 independent patients and treated it as a high-dimensional, small-sample statistical problem.',
+      'Found that supervised dimensionality reduction with regularized regression performed best; separated clip-level development evaluation from unseen-patient generalization.',
+      'Developed a training-derived percentile aggregation method that combines clip-level predictions into patient-level estimates.',
+    ],
+  },
+  {
+    title: 'TrafficWhatIf / DeepCitySim: Intervention-Aware Traffic Prediction', slug: 'trafficwhatif',
+    role: 'Team Lead / Researcher, USC InfoLab', when: 'Sep 2026 – present',
+    bullets: [
+      'Leading ongoing research on intervention-aware traffic prediction, focusing on the data and evaluation requirements for learning from road-network changes.',
+      'Developing a benchmark and evaluation strategy aimed at generalization to unseen cities and transfer from simulation to the real world.',
+    ],
+  },
+];
+
+const skills = [
+  ['Languages', 'Python, C/C++, Java, SQL'],
+  ['ML & Data', 'PyTorch, scikit-learn, NumPy, SciPy, pandas'],
+  ['Systems', 'Linux, Docker, Git, CUDA'],
+];
+---
+<Base title="CV" description="Curriculum vitae of Dexin Ren.">
+  <div class="cv-head">
+    <div>
+      <p class="eyebrow">Curriculum vitae</p>
+      <h1>{site.name}</h1>
+      <p class="muted">M.S. Computer Science · Data-centric &amp; reliable machine learning</p>
+    </div>
+    <a class="btn" href={site.cvPdf} download><Icon name="download" />Download PDF</a>
+  </div>
+
+  <h2>Research focus</h2>
+  <p class="ink-2">Data-centric and reliable machine learning: robustness under distribution shift, analysis of why models fail, and how learning objectives, representations and data characteristics affect generalization.</p>
+
+  <h2>Education</h2>
+  {education.map((e) => (
+    <div class="row">
+      <div class="rl"><strong>{e.school}</strong><span class="ink-2">{e.degree}</span><span class="muted small">{e.note}</span></div>
+      <div class="rr muted small">{e.when}</div>
+    </div>
+  ))}
+
+  <h2>Publications</h2>
+  <ol class="cv-pubs">
+    {pubs.map((p) => (
+      <li>
+        {p.authors.map((a, i) => <>{a === 'Dexin Ren' ? <strong>{a}</strong> : a}{i < p.authors.length - 1 ? ', ' : '. '}</>)}
+        <em>{p.title}.</em> {p.venueShort}{p.status ? ` (${p.status.toLowerCase()})` : ''}.
+        {p.links[0] && <> <a href={p.links[0].href} target="_blank" rel="noopener">{p.links[0].label}</a></>}
+      </li>
+    ))}
+  </ol>
+
+  <h2>Research experience</h2>
+  {experience.map((x) => (
+    <div class="exp">
+      <div class="row">
+        <div class="rl"><a class="et" href={`/research/${x.slug}/`}>{x.title}</a><span class="ink-2 small"><em>{x.role}</em></span></div>
+        <div class="rr muted small">{x.when}</div>
+      </div>
+      <ul>{x.bullets.map((b) => <li>{b}</li>)}</ul>
+    </div>
+  ))}
+
+  <h2>Technical skills</h2>
+  <dl class="skills">
+    {skills.map(([k, v]) => <><dt>{k}</dt><dd>{v}</dd></>)}
+  </dl>
+</Base>
+
+<style>
+  .cv-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .cv-head h1 { margin-bottom: .1em; }
+  h2 { font-size: 1.05rem; font-family: var(--font-sans); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--line-strong); padding-bottom: .4rem; margin-top: 2.5rem; }
+  .row { display: flex; justify-content: space-between; gap: 16px; margin: .9rem 0 .3rem; }
+  .rl { display: flex; flex-direction: column; gap: 2px; }
+  .rr { white-space: nowrap; padding-top: .15em; }
+  .et { font-weight: 600; color: var(--ink); text-decoration: none; }
+  .et:hover { color: var(--accent-ink); }
+  .exp ul { color: var(--ink-2); font-size: .93rem; }
+  .cv-pubs { color: var(--ink-2); font-size: .93rem; padding-left: 1.2em; }
+  .cv-pubs li { margin: .6rem 0; }
+  .cv-pubs strong { color: var(--ink); }
+  .skills { display: grid; grid-template-columns: 120px 1fr; gap: 6px 16px; font-size: .93rem; }
+  .skills dt { font-weight: 600; }
+  .skills dd { margin: 0; color: var(--ink-2); }
+  @media (max-width: 639px) {
+    .row { flex-direction: column; gap: 2px; }
+    .rr { order: -1; }
+    .skills { grid-template-columns: 1fr; }
+    .skills dd { margin-bottom: .5rem; }
+  }
+</style>

@@ -1,0 +1,82 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProjectHeader from '../../components/ProjectHeader.astro';
+import VideoTabs from '../../components/VideoTabs.astro';
+---
+<Base title="TrafficWhatIf" description="A data-centric benchmark for intervention-aware traffic prediction: predicting traffic after the road network changes.">
+  <ProjectHeader
+    title="TrafficWhatIf"
+    subtitle="What happens to city traffic after we change the roads? Building the data to learn that."
+    status="Early stage · ongoing"
+    role="Team lead / researcher, USC InfoLab"
+    period="Sep 2026 – present"
+    team="Learned-simulator direction developed with Prof. Cyrus Shahabi and collaborators; I lead the data and benchmark design."
+    tags={['Synthetic data', 'Sim-to-real transfer', 'Graph-structured shift', 'Surrogate models']}
+    tldr={[
+      'Standard traffic forecasting predicts the future from the past on a <strong>fixed</strong> road network. Planners need the counterfactual: what traffic looks like <strong>after</strong> a closure or policy change.',
+      'Real data for that question barely exist, so the project starts by <strong>designing the data</strong>, working backwards from the learning problem to the observations it needs.',
+      'Targets: generalization to <strong>unseen cities</strong> and <strong>transfer from simulation to the real world</strong>. This is work in progress; no results are claimed yet.',
+    ]}
+  />
+
+  <h2>The gap</h2>
+  <p>
+    A traffic department’s main lever is the road network itself: closing a lane, changing a turn restriction, rerouting around an event.
+    Microscopic simulators can answer “what if?”, but they are slow at city scale. A learned model could answer in seconds and let planners
+    explore many options. Training one needs <em>intervention-aware</em> data, meaning traffic observed before and after known changes to the
+    network. Real-world data of this kind are rare, partial, and usually inferred after the fact, for example by guessing that a road was closed
+    because its flow dropped to zero.
+  </p>
+
+  <h2>Reversing the usual workflow</h2>
+  <div class="flip">
+    <div><span class="k">Usual</span><p>dataset → choose a model → hope it generalizes</p></div>
+    <div class="hi"><span class="k">Here</span><p>learning problem → observations it requires → a designed data-generating process</p></div>
+  </div>
+  <p>
+    I am currently designing a data-centric benchmark for intervention-aware traffic prediction. Models see recent traffic observations
+    together with a changed road graph and predict post-intervention traffic. The design aims for data that are realistic where it matters
+    for the task, controllable, and reproducible. The generator itself is meant to be released and modified, so other groups can vary its
+    assumptions and study how those choices affect what downstream models learn.
+  </p>
+
+  <VideoTabs
+    items={[
+      { label: 'Pasadena', src: '/media/trafficwhatif/pasadena.mp4', poster: '/media/trafficwhatif/pasadena.webp', alt: 'Simulated road-sensor occupancy and speed over Pasadena across a day' },
+      { label: 'Singapore', src: '/media/trafficwhatif/singapore.mp4', poster: '/media/trafficwhatif/singapore.webp', alt: 'Simulated road-sensor occupancy and speed over Singapore across a day' },
+      { label: 'Rotterdam', src: '/media/trafficwhatif/rotterdam.mp4', poster: '/media/trafficwhatif/rotterdam.webp', alt: 'Simulated road-sensor occupancy and speed over Rotterdam across a day' },
+    ]}
+    caption="Early generated data: simulated road-sensor occupancy and speed over a day in three cities (5-minute frames). Grey = no traffic; green → red = rising occupancy; thicker = slower."
+  />
+
+  <h2>How I will know whether the data are any good</h2>
+  <p>
+    “Realistic” is hard to test directly, so the test is about what the data teach. Train <em>several different model families</em> on
+    the synthetic data and evaluate all of them on matched real-world intervention cases.
+  </p>
+  <ul>
+    <li>If diverse models transfer well, the synthetic data contain task-relevant structure that carries over to the real world.</li>
+    <li>If diverse models all learn the synthetic task but fail in the real world, the problem is the data-generation assumptions, not one weak model, and those assumptions need revising.</li>
+  </ul>
+
+  <h2>Where it came from</h2>
+  <p>
+    A pilot project, <strong>TrafficDataGen</strong>, simulated traffic on a 10 × 10 grid city with thousands of agents, each given a randomized daily
+    schedule. It showed that conventional simulators are slow at this scale, and its way of generating agent schedules became the starting
+    point for how TrafficWhatIf generates agent plans.
+  </p>
+
+  <p class="muted small">
+    This is unpublished work in progress, so the page describes the research direction only.
+  </p>
+</Base>
+
+<style>
+  .flip { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 1rem 0 1.5rem; }
+  .flip > div { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 16px; background: var(--surface); }
+  .flip .hi { border-color: var(--accent); background: var(--accent-soft); }
+  .flip .k { font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; color: var(--ink-3); }
+  .flip .hi .k { color: var(--accent-ink); }
+  .flip p { margin: .25rem 0 0; font-family: var(--font-serif); font-size: 1.05rem; }
+  @media (max-width: 639px) { .flip { grid-template-columns: 1fr; } }
+</style>

@@ -1,0 +1,248 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProjectHeader from '../../components/ProjectHeader.astro';
+import Chart from '../../components/Chart.astro';
+import TrajGallery from '../../components/TrajGallery.astro';
+
+// All numbers below are from the published tables in "RectifiedTraj Revisited" (UMFM @ SIGSPATIAL 2026).
+const intervals = ['10 s', '30 s', '1 min', '2 min'];
+const numosim = {
+  'RT-Hybrid (ours)': [3.04, 3.43, 4.17, 4.84],
+  'ResidualReg-Hybrid': [3.01, 3.44, 4.22, 5.02],
+  'DirectReg-Hybrid': [6.61, 102.84, 283.94, 393.15],
+  'DDIM-Hybrid': [18.15, 839.56, 2566.16, 3566.32],
+  'Raw GPS': [20.22, 19.92, 19.92, 19.95],
+};
+const p95 = [2.36, 6.87, 16.34, 24.35];
+
+const stabilitySpec = {
+  type: 'line', x: intervals, yLog: true, unit: ' m', decimals: 2, yLabel: 'mean error (m, log)', xLabel: 'sampling interval',
+  series: [
+    { name: 'RT-Hybrid (ours)', values: numosim['RT-Hybrid (ours)'], slot: 1 },
+    { name: 'ResidualReg-Hybrid', values: numosim['ResidualReg-Hybrid'], slot: 2, dashed: true },
+    { name: 'DirectReg-Hybrid', values: numosim['DirectReg-Hybrid'], slot: 3 },
+    { name: 'DDIM-Hybrid', values: numosim['DDIM-Hybrid'], slot: 4 },
+    { name: 'Raw GPS', values: numosim['Raw GPS'], slot: 'ref', dashed: true },
+  ],
+};
+
+const blog = [
+  { label: 'RT-Hybrid (ours)', value: 12.42, slot: 1 },
+  { label: 'RT-Trans. (ours)', value: 10.88, slot: 1 },
+  { label: 'RT-CNN (ours)', value: 10.54, slot: 1 },
+  { label: 'Valhalla Meili (map matching)', value: 6.17, slot: 'ref', note: 'Uses a road map; the RT models do not.' },
+  { label: 'Hampel', value: 0.83, slot: 'ref' },
+  { label: 'Causal MLP', value: 0.55, slot: 'ref' },
+  { label: 'Kalman filter', value: -1.11, slot: 'ref' },
+  { label: 'Causal Hampel', value: -6.73, slot: 'ref' },
+  { label: 'Alpha-Beta', value: -8.3, slot: 'ref' },
+  { label: 'Kalman-RTS', value: -8.91, slot: 'ref' },
+  { label: 'Savitzky–Golay', value: -9.2, slot: 'ref' },
+  { label: 'DirectReg-Hybrid', value: -22.82, slot: 'ref' },
+  { label: 'DDIM-Hybrid', value: -26.34, slot: 'ref' },
+];
+
+const qs = ['0', '16', '32', '48', '80', '128', '192', '240', '255'];
+const qMean = [3.04, 2.68, 2.55, 2.44, 2.34, 2.24, 2.16, 2.13, 2.12];
+const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
+---
+<Base title="RectifiedTraj" description="RectifiedTraj: map-free, causal, lightweight GPS trajectory denoising with rectified flow (ACM SIGSPATIAL 2026).">
+  <ProjectHeader
+    title="RectifiedTraj"
+    subtitle="Map-free, causal GPS trajectory denoising that runs on a phone."
+    status="Published · ACM SIGSPATIAL 2026"
+    role="First-author lead, USC InfoLab"
+    period="Aug 2025 – Sep 2026"
+    team="With Shang-Ling Hsu, Chen Chu, Lifeng Lin, Ryosuke Shibasaki, Noboru Koshizuka and Cyrus Shahabi"
+    tags={['Distribution shift', 'Rectified flow', 'Failure analysis', 'On-device ML']}
+    links={[
+      { label: 'Paper (DOI)', href: 'https://doi.org/10.1145/3841645.3843430', icon: 'file' },
+      { label: 'Extended study (DOI)', href: 'https://doi.org/10.1145/3849729.3856129', icon: 'file' },
+      { label: 'Poster', href: '/media/rectifiedtraj/rectifiedtraj_poster.pdf', icon: 'download' },
+      { label: 'Code', href: 'https://github.com/DexinRen/RectifiedTraj', icon: 'code' },
+    ]}
+    tldr={[
+      'A <strong>causal, map-free, ~1M-parameter</strong> GPS denoiser: each point is corrected from current and past observations only, with no map or network service.',
+      'Models that predict clean coordinates <strong>blow up</strong> when a trajectory window spans more distance (up to 3.6 km mean error). Predicting the <strong>correction field</strong> stays at about 5 m or less.',
+      'On real-world BlogWatcher data: <strong>44.6% → 57.1%</strong> of points inside their reference radius. Inference takes <strong>124 ms per 256-point chunk</strong> on a 2020 Pixel 4a, CPU only.',
+    ]}
+  />
+
+  <h2>Why this problem</h2>
+  <p>
+    GPS from phones, cars and drones is noisy: reflections, weak reception and urban canyons. Many fixes assume
+    things a device often lacks, such as a fresh road map, a network connection, future observations or a GPU.
+    I started from those deployment constraints rather than from a model. The denoiser had to be
+    <strong>causal</strong> (it cannot see the future), <strong>map-free</strong> (no road network or cloud service),
+    and <strong>lightweight</strong> (fast on old phone CPUs).
+  </p>
+
+  <h2>Approach</h2>
+  <div class="grid-2 approach">
+    <div>
+      <p>
+        <strong>Rectified flow for one-step correction.</strong> Instead of iterating like diffusion, the model learns a straight-line
+        velocity field from noisy to clean trajectories, so one forward pass gives the correction.
+      </p>
+      <p>
+        <strong>Hybrid local–global network.</strong> A 1-D CNN extracts local motion features and a causal Transformer adds
+        longer preceding context. Comparing CNN-only, Transformer-only and hybrid variants doubles as an ablation of which
+        context matters.
+      </p>
+      <p>
+        <strong>Chunking with a “head buckle”.</strong> Trajectories are processed in fixed 256-point chunks. Because a causal model has the
+        least context at the start of a chunk, overlapping chunks let us discard those early predictions when reassembling.
+      </p>
+    </div>
+    <figure class="paper-fig arch">
+      <img src="/media/rectifiedtraj/architecture.svg" alt="Architecture: pointwise embedding and 1D CNN feed a causal Transformer with positional and noise embeddings; an MLP head predicts the velocity." loading="lazy" />
+      <figcaption>Causal local–global denoising network (from the paper).</figcaption>
+    </figure>
+  </div>
+
+  <h2>What it looks like</h2>
+  <p>
+    Every method below sees the same noisy trajectories from central Tokyo. In the extended study I compared fourteen of them, from
+    classical filters to diffusion. Pick a method above the map: line width encodes each trajectory's error, so a clean method draws a
+    fine street map and a poor one smears it.
+  </p>
+  <TrajGallery
+    items={[
+      { key: 'raw', label: 'Raw GPS', mean10: 20.22, online10: 20.22, mean2m: 19.95, causal: false },
+      { key: 'residualreg-hybrid', label: 'ResidualReg-Hybrid', mean10: 3.01, online10: 2.07, mean2m: 5.02, causal: true },
+      { key: 'rt-hybrid', label: 'RT-Hybrid', mean10: 3.04, online10: 2.12, mean2m: 4.84, causal: true },
+      { key: 'rt-trans', label: 'RT-Trans.', mean10: 3.26, online10: 2.55, mean2m: 6.08, causal: true },
+      { key: 'rt-cnn', label: 'RT-CNN', mean10: 4.49, online10: 4.50, mean2m: 7.35, causal: true },
+      { key: 'causal-mlp', label: 'Causal MLP', mean10: 5.42, online10: 5.42, mean2m: 12.35, causal: true },
+      { key: 'directreg-hybrid', label: 'DirectReg-Hybrid', mean10: 6.61, online10: 19.63, mean2m: 393.15, causal: true },
+      { key: 'kalman-rts', label: 'Kalman-RTS', mean10: 9.02, online10: null, mean2m: 20.20, causal: false },
+      { key: 'savgol', label: 'Savitzky–Golay', mean10: 9.68, online10: null, mean2m: 26.40, causal: false },
+      { key: 'alpha-beta', label: 'Alpha-Beta', mean10: 13.94, online10: 13.94, mean2m: 19.84, causal: true },
+      { key: 'kalman-filter', label: 'Kalman filter', mean10: 14.99, online10: 14.99, mean2m: 19.95, causal: true },
+      { key: 'ddim-hybrid', label: 'DDIM-Hybrid', mean10: 18.15, online10: null, mean2m: 3566.32, causal: true },
+      { key: 'hampel', label: 'Hampel', mean10: 18.84, online10: null, mean2m: 18.82, causal: false },
+      { key: 'causal-hampel', label: 'Causal Hampel', mean10: 18.91, online10: 18.91, mean2m: 33.98, causal: true },
+      { key: 'valhalla-meili', label: 'Valhalla Meili', mean10: 30.34, online10: null, mean2m: 29.18, causal: false },
+      { key: 'ground-truth', label: 'Ground truth', mean10: null, online10: null, mean2m: null, causal: false },
+    ]}
+    caption="NUMOSIM-Kanto city-centre subset near the Imperial Palace, Tokyo, from the extended study's qualitative figure. Between Raw GPS (first) and ground truth (last), tabs are ordered from lowest to highest mean error at the native 10 s interval (full test set). Each trajectory's line width encodes its average error, so thinner is better."
+  />
+
+  <h2>The finding I care most about</h2>
+  <p>
+    The large experiment grid turned up something odd. Models that predict <em>clean coordinates directly</em> trained badly on
+    NUMOSIM, with huge losses and outlier predictions. They then behaved <em>surprisingly well</em> on Patterns of Life, a dataset they
+    had never seen, with a different simulator and a different noise type. That ruled out GPS noise level as the explanation.
+  </p>
+  <p>
+    The cause turned out to be <strong>geometry inside the input window</strong>. NUMOSIM agents keep moving, so as the sampling interval grows,
+    one 256-point chunk spans more ground. The p95 within-chunk distance grows from <strong>{p95[0]} km to {p95[3]} km</strong>.
+    A model regressing absolute positions must cover that growing range. Patterns of Life agents stay at points of interest, so its
+    chunks stay under 4 km and the problem never appears. A correction field (noise → clean) has roughly the same scale no matter
+    how far the trajectory travels.
+  </p>
+
+  <Chart
+    title="Error as each input chunk covers more distance (NUMOSIM-Kanto)"
+    spec={stabilitySpec}
+    caption={`Same backbone, different target. Predicting clean coordinates (DirectReg) or reconstructing the clean state (DDIM) explodes as the p95 within-chunk distance grows from ${p95.join(' → ')} km. Predicting the correction (RT, ResidualReg) stays flat. The raw-GPS line is the do-nothing baseline.`}
+    source="RectifiedTraj Revisited (NUMOSIM benchmark and within-chunk distance tables)."
+    table={{ head: ['Method', ...intervals], rows: Object.entries(numosim).map(([k, v]) => [k, ...v.map((x) => x.toFixed(2))]) }}
+  />
+
+  <div class="callout">
+    <strong>An honest result:</strong> a same-backbone <em>residual-regression</em> baseline performs about as well as RectifiedTraj. Most of the
+    stability comes from <em>predicting the correction</em>, not from rectified-flow training as such. I reported this in the extended study
+    because it changes what the method's real contribution is.
+  </div>
+
+  <h2>Real-world accuracy</h2>
+  <p>
+    BlogWatcher is a non-public, real mobile dataset with a reference radius instead of exact ground truth. A point counts as accurate if it
+    falls inside its radius. Raw GPS already scores 44.63%, so any method below zero makes the data <em>worse</em>. Several classical filters do.
+  </p>
+  <Chart
+    title="Change in accuracy vs. raw GPS on BlogWatcher (percentage points)"
+    spec={{ type: 'hbar', items: blog, signed: true, decimals: 2, xLabel: 'Δ accuracy vs. raw GPS (pp)' }}
+    caption="RectifiedTraj variants are in colour. Map matching is the strongest baseline but needs a road map. Diffusion and direct regression degrade badly on these long, irregular sampling intervals (mean 116 s)."
+    source="RectifiedTraj Revisited (BlogWatcher accuracy table)."
+    table={{ head: ['Method', 'Δ accuracy (pp)'], rows: blog.map((b) => [b.label, b.value.toFixed(2)]) }}
+  />
+
+  <h2>Fixing the start of each chunk</h2>
+  <p>
+    Before running any experiment I expected a causal model to make more errors near chunk boundaries, where it lacks context. The point-wise
+    error heatmap confirmed this at the start of each chunk for the Transformer-based variants. The CNN-only variant, with its bounded receptive field, does not show the
+    effect. The head buckle discards the first <em>Q</em> predictions of each overlapping chunk, which trades throughput for accuracy:
+  </p>
+  <div class="grid-2">
+    <Chart
+      title="Mean error vs. head-buckle size Q"
+      spec={{ type: 'line', x: qs, series: [{ name: 'RT-Hybrid', values: qMean, slot: 1 }], unit: ' m', decimals: 2, yMin: 2, yMax: 3.2, xLabel: 'Q (discarded points per chunk)', height: 240 }}
+      table={{ head: ['Q', 'Mean error (m)'], rows: qs.map((q, i) => [q, qMean[i].toFixed(2)]) }}
+    />
+    <Chart
+      title="Throughput vs. Q"
+      spec={{ type: 'line', x: qs, series: [{ name: 'RT-Hybrid', values: qThr, slot: 1 }], unit: ' pts/s', decimals: 0, yMin: 0, xLabel: 'Q (discarded points per chunk)', height: 240 }}
+      table={{ head: ['Q', 'Retained predictions / s'], rows: qs.map((q, i) => [q, qThr[i].toLocaleString('en-US')]) }}
+    />
+  </div>
+  <p class="small muted">
+    Q = 192 cuts mean error from 3.04 m to 2.16 m and p95 error from 8.83 m to 4.56 m, while still keeping about 9.8k predictions/s.
+    Last-point error stays at about 2.1 m throughout, so the gain comes from dropping the poorly contextualised start, not from changing the tail.
+  </p>
+  <figure class="paper-fig hb">
+    <img src="/media/rectifiedtraj/head_buckle.svg" alt="Overlapping chunks: each chunk's head-buckle region is discarded and the payload predictions are stitched into one trajectory." loading="lazy" />
+    <figcaption>Head-buckle reassembly: overlapping chunks, discarded heads (HB), stitched payloads.</figcaption>
+  </figure>
+
+  <h2>On a phone</h2>
+  <div class="stats">
+    <div class="stat"><div class="num">124 ms</div><div class="lbl">RT-Hybrid per 256-point chunk, Pixel 4a, CPU only</div></div>
+    <div class="stat"><div class="num">11 ms</div><div class="lbl">RT-CNN per chunk (23k points/s)</div></div>
+    <div class="stat"><div class="num">≈1M</div><div class="lbl">parameters (5.1 MB exported model)</div></div>
+    <div class="stat"><div class="num">1 step</div><div class="lbl">vs. 500 steps for the DDIM baseline</div></div>
+  </div>
+
+  <h2>Other things the experiments taught me</h2>
+  <ul>
+    <li><strong>Bigger was not better for transfer.</strong> Larger models fit the training set slightly better, but smaller ones often did better across datasets and noise types. Reported models are about 1M parameters, a realistic on-device size.</li>
+    <li><strong>Causal sometimes beat non-causal.</strong> Closely matched causal variants (left-padded CNN, causal attention, otherwise identical) were sometimes <em>more</em> accurate than their non-causal counterparts. I still want to understand why.</li>
+    <li><strong>Design the experiment around the claim.</strong> My first grid crossed model sizes, objectives, datasets and six sampling intervals. Most of it did not test a claim. The final protocol keeps the intervals that probe zero-shot transfer, few-shot transfer and cross-dataset alignment.</li>
+  </ul>
+
+  <h2>Talk &amp; poster</h2>
+  <div class="grid-2 media">
+    <figure>
+      <video controls preload="none" playsinline poster="/media/rectifiedtraj/lightning_talk_poster.webp" width="1280" height="720">
+        <source src="/media/rectifiedtraj/lightning_talk.mp4" type="video/mp4" />
+      </video>
+      <figcaption>75-second lightning talk for SIGSPATIAL 2026 (poster R-133). Silent video.</figcaption>
+    </figure>
+    <figure>
+      <a href="/media/rectifiedtraj/rectifiedtraj_poster.pdf" class="poster-link">
+        <img src="/media/rectifiedtraj/poster_preview.webp" alt="RectifiedTraj conference poster" loading="lazy" />
+      </a>
+      <figcaption>Conference poster. Click for the PDF.</figcaption>
+    </figure>
+  </div>
+
+  <h2>Open questions</h2>
+  <ul>
+    <li>Why do matched causal models sometimes outperform non-causal ones?</li>
+    <li>Can a smaller model with a better inductive bias match RT-Hybrid, and can we explain <em>what</em> the correction field has learned?</li>
+    <li>Real-world evaluation is limited by data: BlogWatcher is sparse and extreme. A more typical real-world benchmark with exact ground truth would change what we can claim.</li>
+  </ul>
+</Base>
+
+<style>
+  .approach { align-items: start; }
+  .approach p { font-size: .97rem; }
+  .arch { margin: 0; }
+  .arch img { max-height: 380px; width: auto; }
+  .hb img { max-width: 420px; width: 100%; }
+  .media figure { margin: 0; }
+  .media video { width: 100%; border-radius: var(--radius-sm); background: #000; aspect-ratio: 16 / 9; }
+  .poster-link img { border-radius: var(--radius-sm); border: 1px solid var(--line); max-height: 420px; width: auto; margin: 0 auto; }
+  .poster-link { display: block; }
+</style>

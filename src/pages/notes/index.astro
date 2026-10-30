@@ -1,0 +1,132 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import { getCollection } from 'astro:content';
+import { areas, familyOf } from '../../data/notes-areas';
+
+const notes = await getCollection('wiki');
+const groups = areas
+  .map((a) => {
+    const items = notes
+      .filter((n) => n.data.areaSlug === a.slug)
+      .sort((x, y) => x.data.order - y.data.order || x.data.title.localeCompare(y.data.title));
+    return { ...a, name: items[0]?.data.area ?? a.slug, items, fam: familyOf(a.slug) };
+  })
+  .filter((g) => g.items.length > 0);
+const tagCounts = new Map<string, number>();
+// Tag buttons come from research notes only; kitchen tags stay on the recipe pages themselves.
+notes
+  .filter((n) => familyOf(n.data.areaSlug).key !== 'kitchen')
+  .forEach((n) => n.data.tags.forEach((t) => tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1)));
+const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([t]) => t);
+---
+<Base title="Notes" description="A wiki of topics in learning theory, online learning, machine learning and mathematics, with the reasoning written in, by Dexin Ren.">
+  <p class="eyebrow">Notes</p>
+  <h1>Notes</h1>
+  <p class="lede">A small wiki of topics in learning theory, online learning, machine learning and mathematics, plus my kitchen. I only publish a page when it is finished and carries my own reasoning: the missing steps, analogies and “why” that a lecture, textbook or recipe skips.</p>
+
+  <aside class="scaffold">
+    <p class="sk">Why these notes exist</p>
+    <p>
+      Lectures and textbooks often use a method without saying why it was chosen or where it came from. When I study, I try to
+      rebuild that missing middle: the scaffold a mathematician might have used while working the problem out, before the clean
+      proof was written down. Sometimes I can recover the original path; sometimes I can only build a plausible one.
+    </p>
+    <p>
+      Rebuilding those steps feels like a conversation with the people who first found the result, guessing what they were
+      thinking. It is my favourite part of studying, and the reasoning I add is what makes these notes mine.
+    </p>
+  </aside>
+
+  <div class="tools">
+    <a class="btn" href="/notes/graph/"><Icon name="link" />Graph view</a>
+    <label class="search">
+      <span class="visually-hidden">Filter notes</span>
+      <input id="note-filter" type="search" placeholder={`Filter ${notes.length} notes…`} autocomplete="off" />
+    </label>
+  </div>
+  {topTags.length > 0 && (
+    <ul class="chips tagbar" aria-label="Filter by tag">
+      {topTags.map((t) => <li><button type="button" class="chip tagbtn" data-tag={t}>#{t}</button></li>)}
+    </ul>
+  )}
+
+  <nav class="toc" aria-label="Areas">
+    {groups.map((g) => <a href={`#${g.slug}`} style={`--c: var(--series-${g.fam.slot})`}><span class="dot" />{g.name} <span class="muted">{g.items.length}</span></a>)}
+  </nav>
+
+  {groups.map((g, i) => (
+    <>
+    {g.fam.key === 'kitchen' && groups[i - 1]?.fam.key !== 'kitchen' && <p class="eyebrow beyond" data-area-label>Beyond research</p>}
+    <section class="area" id={g.slug} data-area>
+      <h2 style={`--c: var(--series-${g.fam.slot})`}><span class="bar" />{g.name}</h2>
+      <p class="muted small blurb">{g.blurb}</p>
+      <ul class="note-list">
+        {g.items.map((n) => (
+          <li data-title={n.data.title.toLowerCase()} data-tags={n.data.tags.join(' ').toLowerCase()}>
+            <a href={`/notes/${n.id}/`}>{n.data.title}</a>
+            {n.data.tags.length > 0 && <span class="ntags">{n.data.tags.slice(0, 3).map((t) => `#${t}`).join(' ')}</span>}
+          </li>
+        ))}
+      </ul>
+    </section>
+    </>
+  ))}
+  <p id="no-match" class="muted" hidden>No notes match.</p>
+</Base>
+
+<script>
+  const input = document.getElementById('note-filter') as HTMLInputElement;
+  const tagBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.tagbtn'));
+  let activeTag = '';
+  function apply() {
+    const q = input.value.trim().toLowerCase();
+    let shown = 0;
+    document.querySelectorAll<HTMLElement>('[data-area]').forEach((sec) => {
+      let n = 0;
+      sec.querySelectorAll<HTMLElement>('li[data-title]').forEach((li) => {
+        const ok = (!q || li.dataset.title!.includes(q) || li.dataset.tags!.includes(q)) && (!activeTag || li.dataset.tags!.split(' ').includes(activeTag));
+        li.hidden = !ok; if (ok) n++;
+      });
+      sec.hidden = n === 0; shown += n;
+    });
+    document.getElementById('no-match')!.hidden = shown > 0;
+    const label = document.querySelector<HTMLElement>('[data-area-label]');
+    if (label) label.hidden = ['cookbook', 'kitchen-modules'].every((id) => document.getElementById(id)?.hidden);
+  }
+  input.addEventListener('input', apply);
+  tagBtns.forEach((b) => b.addEventListener('click', () => {
+    activeTag = activeTag === b.dataset.tag!.toLowerCase() ? '' : b.dataset.tag!.toLowerCase();
+    tagBtns.forEach((x) => x.classList.toggle('on', x.dataset.tag!.toLowerCase() === activeTag));
+    apply();
+  }));
+</script>
+
+<style>
+  .scaffold { margin: 1.5rem 0 0; padding: 16px 20px 6px; border-left: 3px solid var(--ctl); background: var(--surface); border-radius: 0 var(--radius) var(--radius) 0; }
+  .scaffold .sk { margin: 0 0 .4rem; font-size: .72rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ctl-ink); }
+  .scaffold p { color: var(--ink-2); }
+  .tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 2rem 0 .75rem; }
+  .search { flex: 1 1 220px; }
+  .search input { width: 100%; font: inherit; font-size: .9rem; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); }
+  .search input:focus { outline: 2px solid var(--ctl); outline-offset: 1px; }
+  .tagbar { margin-bottom: 1.25rem; gap: 6px; }
+  .tagbar li { margin: 0; }
+  .tagbtn { cursor: pointer; font: inherit; font-size: .75rem; }
+  .tagbtn.on { background: var(--ctl); color: var(--on-ctl); }
+  .toc { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .85rem; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .toc a { color: var(--ink-2); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .toc a:hover { color: var(--ink); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); display: inline-block; }
+  .area h2 { display: flex; align-items: center; gap: 10px; font-size: 1.3rem; margin-top: 2.25rem; margin-bottom: .2rem; }
+  .bar { width: 4px; height: 1.1em; border-radius: 2px; background: var(--c); }
+  .blurb { margin: 0 0 .5rem 14px; }
+  .beyond { margin: 3.5rem 0 -1rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+  .note-list { list-style: none; padding: 0; margin: 0; }
+  .note-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: .45rem 0 .45rem 14px; border-bottom: 1px dashed var(--line); }
+  .note-list li[hidden] { display: none; }
+  .note-list a { color: var(--ink); text-decoration: none; }
+  .note-list a:hover { color: var(--accent-ink); }
+  .ntags { font-size: .72rem; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+  @media (max-width: 639px) { .ntags { display: none; } }
+</style>

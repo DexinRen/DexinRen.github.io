@@ -1,0 +1,101 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProjectHeader from '../../components/ProjectHeader.astro';
+import Chart from '../../components/Chart.astro';
+
+// Controlled comparison: visit-level AP relative to the best configuration (=100). Absolute competition scores are not shown.
+const groups = [
+  { label: '1-visit window', values: [81.6, 45.6] },
+  { label: '1-visit window, 3× depth', values: [83.4, 28.0] },
+  { label: '32-visit window', values: [100.0, 71.3] },
+  { label: '32-visit window, 3× depth', values: [60.2, 15.0] },
+];
+const spearman = [
+  { label: 'Asymmetric focal', value: 0.899, slot: 1 },
+  { label: 'SmoothAP', value: 0.460, slot: 'ref' },
+  { label: 'Focal', value: 0.436, slot: 'ref' },
+  { label: 'BCE', value: 0.266, slot: 'ref' },
+  { label: 'Tversky', value: 0.216, slot: 'ref' },
+  { label: 'Cross-batch SmoothAP', value: 0.172, slot: 'ref' },
+  { label: 'Soft Dice', value: 0.169, slot: 'ref' },
+];
+---
+<Base title="Mobility anomaly detection (HAYSTAC)" description="Diagnosing why a purpose-built Transformer anomaly detector underperformed a simple MLP: architecture, objective, representation and checkpoint selection.">
+  <ProjectHeader
+    title="When the simple model wins"
+    subtitle="Diagnosing why a purpose-built Transformer for mobility anomaly detection lost to a plain MLP."
+    status="HAYSTAC · ongoing investigation"
+    role="Research team member"
+    period="Jun 2026 – Sep 2026"
+    team="USC InfoLab & Novateur Research Solutions (detection team)"
+    tags={['Failure analysis', 'Objectives & losses', 'Inductive bias', 'Training dynamics']}
+    tldr={[
+      'A Transformer designed for this task trailed a simple MLP by a wide margin. In controlled swaps inside the <em>same</em> pipeline, the MLP variant beat the Transformer variant in every setting tested, yet still did not close the gap. <strong>Architecture is part of the story, not all of it.</strong>',
+      'Training and validation losses come from <em>synthetic</em> anomalies, and their rankings barely tracked real detection performance. Asymmetric focal loss tracked it best (Spearman ρ ≈ 0.90 vs. 0.27 for BCE), with a confound I could not yet rule out.',
+      'I rebuilt the training data pipeline: about <strong>½ the memory</strong> and <strong>2–12× faster</strong> training.',
+    ]}
+  />
+
+  <h2>The puzzle</h2>
+  <p>
+    The task: given every agent’s past movement history (visits to places, with times), flag which future visits are anomalous. A
+    Transformer model built for this problem looks at a window of visits, keeps a learned signature per agent, and scores each visit. It
+    lost clearly to a much simpler deep MLP that scores one visit at a time. The MLP’s code was not available to me, so I could not compare
+    the two directly. Instead I made the comparison <em>inside</em> the Transformer’s own pipeline.
+  </p>
+
+  <h2>Step 1: hold everything fixed, swap one thing</h2>
+  <p>
+    I built variants that change only the backbone (Transformer ↔ MLP), the context window (1 visit ↔ 32 visits) and the depth, sharing the
+    same data, features, loss and training schedule.
+  </p>
+  <Chart
+    title="Visit-level average precision, relative to the best configuration"
+    spec={{ type: 'ghbar', series: [{ name: 'MLP backbone', slot: 2 }, { name: 'Transformer backbone', slot: 1 }], groups, unit: '', decimals: 0, max: 100, xLabel: 'visit AP (best configuration = 100)' }}
+    caption="With everything else fixed, the MLP backbone beat the Transformer in every setting, and the gap widens with depth. Absolute scores are omitted. The external MLP baseline still scored well above the best variant here, so something besides the backbone limits performance."
+    table={{ head: ['Setting', 'MLP', 'Transformer'], rows: groups.map((g) => [g.label, g.values[0].toFixed(1), g.values[1].toFixed(1)]) }}
+  />
+
+  <h2>Step 2: does the loss point the right way?</h2>
+  <p>
+    There are no real anomalies at training time. Models train and are validated on synthetically injected anomalies, so checkpoints
+    were chosen by a loss that is never anchored to the real target. With extremely sparse anomalies, plain BCE can look excellent by scoring
+    everything as normal. I evaluated a checkpoint every epoch for each candidate loss and measured the
+    <strong>rank agreement</strong> between “lower training loss” and “better real detection”.
+  </p>
+  <Chart
+    title="How well each loss ranks checkpoints (Spearman ρ with real visit-AP ranking)"
+    spec={{ type: 'hbar', items: spearman, decimals: 2, xLabel: 'Spearman ρ (higher = loss is a better guide)' }}
+    caption="Anomaly-loss ranking, 100 epochs per loss. Asymmetric focal loss also came out on top when the ranking used the total loss, including the agent-representation term (ρ = 0.92)."
+    table={{ head: ['Loss', 'Spearman ρ'], rows: spearman.map((s) => [s.label, s.value.toFixed(3)]) }}
+  />
+  <div class="callout">
+    <strong>The confound.</strong> Asymmetric focal loss also learns much more slowly. Its best epoch was 97 out of 100, so it may simply
+    not have reached the over-training phase in which rankings fall apart. A high ρ could mean “good guide” or just “still improving”.
+    Separating the two needs longer runs and matched learning progress.
+  </div>
+
+  <h2>Step 3: what does the representation keep?</h2>
+  <p>
+    Because the backbone does not explain the whole gap, I audited what information the input representation keeps and what it discards:
+    how time is encoded, whether visit durations and gaps are available, whether category features keep their magnitude, and how sequence
+    order reaches the model. Each gap I found became a falsifiable hypothesis for the remaining performance difference. Some design choices,
+    such as leaving out place IDs, turned out to be deliberate after teammates found they hurt.
+  </p>
+
+  <h2>Engineering that made the experiments possible</h2>
+  <p>
+    The sweeps above need many full training runs, and the original pipeline ran out of memory on the larger dataset. I rewrote data
+    preparation around an index that reads training data from disk only when a batch needs it, and around pre-generated noisy samples, so
+    workers stop rebuilding the same corruptions every epoch. Memory use roughly halved, and training ran 2–12× faster depending on the
+    configuration.
+  </p>
+
+  <h2>What I took away</h2>
+  <p>
+    Architecture, objective, representation and the selection procedure all act on the result together. A more sophisticated
+    architecture is not automatically better when its inductive bias, supervision or checkpoint signal is poorly matched to the task. Next I
+    would study the failure modes of MLP vs. Transformer on sparse-label problems directly, and test whether ideas from learning theory, such
+    as weight norms as a capacity measure, explain the over-fitting I observed.
+  </p>
+</Base>

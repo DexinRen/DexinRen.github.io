@@ -1,0 +1,693 @@
+{
+  "_comment": "Wiki pages published on the site. Each page is built from one or more notes in your Obsidian vault (paths relative to the vault root, e.g. MEGA/work), either whole or as selected sections (a heading plus everything under it; prefix match on the heading line). Only notes that are complete AND show your own reasoning belong here. Run `node scripts/sync-notes.mjs <vault-path>` after editing.",
+  "areas": {
+    "learning-theory": {
+      "name": "Statistical Learning Theory"
+    },
+    "online-learning": {
+      "name": "Online Learning & Bandits"
+    },
+    "machine-learning": {
+      "name": "Machine Learning & Generative Models"
+    },
+    "probability": {
+      "name": "Probability & Statistics"
+    },
+    "numerical-linear-algebra": {
+      "name": "Numerical Linear Algebra"
+    },
+    "cookbook": {
+      "name": "Cookbook"
+    },
+    "kitchen-modules": {
+      "name": "Kitchen Building Blocks"
+    }
+  },
+  "credits": {
+    "csci678": {
+      "text": "Based on Prof. Haipeng Luo's CSCI 678 (Theoretical Machine Learning, USC, Fall 2026). Thank you to Prof. Luo for an excellent course. These notes contain my own understanding and the bridging steps I added to make the lectures easier to follow; any mistakes are mine.",
+      "link": "https://haipeng-luo.net/courses/CSCI678/2026_fall/schedule.html",
+      "lectureUrlPattern": "https://haipeng-luo.net/courses/CSCI678/2026_fall/lectures/lecture{n}.pdf"
+    },
+    "csci659": {
+      "text": "Based on USC CSCI 659 (Online Learning & Bandits, Spring 2026). These notes contain my own understanding and the bridging steps I added; any mistakes are mine."
+    },
+    "math501": {
+      "text": "Based on USC MATH 501 (Numerical Analysis, Spring 2026). These notes contain my own understanding and the intuition I added; any mistakes are mine."
+    }
+  },
+  "pages": [
+    {
+      "title": "Statistical Learning: Competing with a Reference Class",
+      "slug": "statistical-learning",
+      "area": "learning-theory",
+      "credits": [
+        "csci678"
+      ],
+      "lectures": [
+        1
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 678/Lecture 1 - Statistical Learning and Online Learning.md",
+          "sections": [
+            "# From Supervised Learning to Statistical Learning",
+            "# General Statistical Learning",
+            "# Statistical Learnability"
+          ]
+        }
+      ],
+      "tags": [
+        "learning_theory"
+      ],
+      "related": [
+        "symmetrization-and-rademacher-complexity",
+        "online-to-batch"
+      ]
+    },
+    {
+      "title": "PAC Learning, Density Estimation and No Free Lunch",
+      "slug": "no-free-lunch",
+      "area": "learning-theory",
+      "credits": [
+        "csci678"
+      ],
+      "lectures": [
+        1
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 678/Lecture 1 - Statistical Learning and Online Learning.md",
+          "sections": [
+            "# Examples of Statistical Learning",
+            "# Can Every Function Class Be Learned?",
+            "## Proof: No-Free-Lunch Theorem"
+          ]
+        }
+      ],
+      "tags": [
+        "learning_theory"
+      ]
+    },
+    {
+      "title": "Bounding ERM: Symmetrization, Rademacher Complexity and Finite Classes",
+      "slug": "symmetrization-and-rademacher-complexity",
+      "area": "learning-theory",
+      "credits": [
+        "csci678"
+      ],
+      "lectures": [
+        2
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 678/self_note/Lecture 2.md",
+          "sections": [
+            "## Objectives",
+            "## Upperbounding Steps"
+          ],
+          "exclude": [
+            "###### Case 2: Infinite Function Class"
+          ]
+        }
+      ],
+      "fixes": [
+        {
+          "find": "where $f$ is the best function in $\\mathcal{F}$ that fit the $n$ observations",
+          "replace": "where $f$ is the best function in $\\mathcal{F}$ on the true distribution (not on the $n$ observations)"
+        },
+        {
+          "find": "\\mathop{\\mathbb{E}}\\limits_{z_{1:n}\\sim\\mathcal{P}}[ \\frac{1}{n}\\sum\\limits^{n}_{t=1}\\ell(f,z;_{t}) ]",
+          "replace": "\\mathop{\\mathbb{E}}\\limits_{z'_{1:n}\\sim\\mathcal{P}}[ \\frac{1}{n}\\sum\\limits^{n}_{t=1}\\ell(f,z'_{t}) ]"
+        },
+        {
+          "find": "\\sum\\limits^{n-1}_{t=1}\\left(\\epsilon_{t}Gf(x_{t})\\right)",
+          "replace": "\\sum\\limits^{n}_{t=1}\\left(\\epsilon_{t}Gf(x_{t})\\right)"
+        },
+        {
+          "find": "\\max\\limits_{f\\in\\mathcal{F}} \\sum\\limits^{n}_{t=1}U_{f}",
+          "replace": "\\max\\limits_{f\\in\\mathcal{F}} U_{f}"
+        },
+        {
+          "find": "e^\\lambda\\epsilon_{t}f(x_{t})",
+          "replace": "e^{\\lambda\\epsilon_{t}f(x_{t})}"
+        },
+        {
+          "find": "\\hat{\\mathcal{R}}^{iid}(\\mathcal{F})\n=C\\sqrt",
+          "replace": "\\mathcal{R}^{iid}(\\mathcal{F})\n\\leq C\\sqrt"
+        }
+      ],
+      "tags": [
+        "learning_theory",
+        "complexity_measures"
+      ],
+      "related": [
+        "covering-numbers",
+        "sub-gaussian"
+      ]
+    },
+    {
+      "title": "Covering Numbers: From Finite to Infinite Classes",
+      "slug": "covering-numbers",
+      "area": "learning-theory",
+      "credits": [
+        "csci678"
+      ],
+      "lectures": [
+        3
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 678/Lecture 3 - Infinite Class Regression.md",
+          "sections": [
+            "## Main Task",
+            "# 1. Pointwise Cover",
+            "# 2. Bounded Linear Functions",
+            "# 3. Pointwise Cover Is Too Strict",
+            "# 4. Covering the Projection"
+          ]
+        }
+      ],
+      "tags": [
+        "learning_theory",
+        "complexity_measures"
+      ],
+      "related": [
+        "chaining",
+        "fat-shattering-dimension"
+      ]
+    },
+    {
+      "title": "Dudley's Entropy Integral and Chaining",
+      "slug": "chaining",
+      "area": "learning-theory",
+      "credits": [
+        "csci678"
+      ],
+      "lectures": [
+        3
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 678/Lecture 3 - Infinite Class Regression.md",
+          "sections": [
+            "# 5. Dudley Entropy Integral",
+            "# 6. Chaining"
+          ]
+        }
+      ],
+      "tags": [
+        "learning_theory",
+        "complexity_measures"
+      ]
+    },
+    {
+      "title": "From Pseudo-Dimension to Fat-Shattering Dimension",
+      "slug": "fat-shattering-dimension",
+      "area": "learning-theory",
+      "credits": [
+        "csci678"
+      ],
+      "lectures": [
+        3,
+        4
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 678/Lecture 3 - Infinite Class Regression.md",
+          "sections": [
+            "# 7. Pseudo-Dimension",
+            "# 8. Closing the Loop"
+          ]
+        },
+        {
+          "from": "Course/CS/CSCI 678/Lecture 4 - Fat-Shattering and Neural Network Complexity.md",
+          "sections": [
+            "# Fat-Shattering Dimension",
+            "# Fat-Shattering $\\to$ Covering Number",
+            "## Proof: Fat Dimension of Monotone Functions"
+          ]
+        }
+      ],
+      "tags": [
+        "learning_theory",
+        "complexity_measures"
+      ],
+      "related": [
+        "neural-network-generalization"
+      ]
+    },
+    {
+      "title": "Why Neural Networks Generalize: Norm-Based Covers, Spectral Complexity and Margins",
+      "slug": "neural-network-generalization",
+      "area": "learning-theory",
+      "credits": [
+        "csci678"
+      ],
+      "lectures": [
+        4
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 678/Lecture 4 - Fat-Shattering and Neural Network Complexity.md",
+          "sections": [
+            "# Neural Networks:",
+            "# Linear Class:",
+            "# One-Layer Neural Network",
+            "# Multi-Layer Neural Network",
+            "# Spectral Complexity",
+            "# Margin",
+            "# Normalized Margin Distribution",
+            "# What Does the Theory Explain?",
+            "# Closing the Loop",
+            "## Proof: Linear Cover Bound",
+            "## Proof: Error Propagation Through Layers",
+            "## Proof: Optimal Error Allocation"
+          ]
+        }
+      ],
+      "tags": [
+        "learning_theory",
+        "deep_learning"
+      ]
+    },
+    {
+      "title": "Online Learnability as a Minimax Game",
+      "slug": "online-learnability",
+      "area": "learning-theory",
+      "credits": [
+        "csci678"
+      ],
+      "lectures": [
+        5
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 678/Lecture 5 - Online Learning.md"
+        }
+      ],
+      "tags": [
+        "learning_theory",
+        "online_learning"
+      ],
+      "related": [
+        "symmetrization-and-rademacher-complexity",
+        "online-to-batch"
+      ]
+    },
+    {
+      "title": "Online Learning Games: Protocols, Feedback and Environments",
+      "slug": "online-learning-games",
+      "area": "online-learning",
+      "credits": [
+        "csci659"
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 659/in_class/Lecture 1.md",
+          "sections": [
+            "## What “online” means",
+            "## Usage of online learning",
+            "## Common instances of online learning",
+            "## Course Game Setup & Focus"
+          ]
+        },
+        {
+          "from": "Course/CS/CSCI 659/wiki/environment/Online Convex Optimization (OCO).md"
+        }
+      ],
+      "tags": [
+        "online_learning"
+      ]
+    },
+    {
+      "title": "Online Learning, Regret and Online-to-Batch Conversion",
+      "slug": "online-to-batch",
+      "area": "online-learning",
+      "credits": [
+        "csci678",
+        "csci659"
+      ],
+      "lectures": [
+        1
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 678/Lecture 1 - Statistical Learning and Online Learning.md",
+          "sections": [
+            "# Online Learning",
+            "# Which Problem Is Harder?",
+            "# Closing the Loop",
+            "## Proof: Online-to-Batch Reduction"
+          ]
+        },
+        {
+          "from": "Course/CS/CSCI 659/in_class/Lecture 1.md",
+          "sections": [
+            "## Connection to Statistical Learning"
+          ]
+        }
+      ],
+      "tags": [
+        "online_learning",
+        "learning_theory"
+      ],
+      "related": [
+        "experts-ftl-vs-hedge"
+      ]
+    },
+    {
+      "title": "Prediction with Expert Advice: Why FTL Fails and Hedge Works",
+      "slug": "experts-ftl-vs-hedge",
+      "area": "online-learning",
+      "credits": [
+        "csci659"
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 659/in_class/Lecture 1.md",
+          "sections": [
+            {
+              "start": "## Expert Problem",
+              "toEnd": true
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "online_learning"
+      ],
+      "related": [
+        "exp2"
+      ]
+    },
+    {
+      "title": "Exp2: Bandit Linear Optimization from One Scalar Loss",
+      "slug": "exp2",
+      "area": "online-learning",
+      "credits": [
+        "csci659"
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 659/wiki/Algorithm/Exp2 – Bandit Linear Optimization (BLO).md"
+        }
+      ],
+      "tags": [
+        "online_learning",
+        "bandits"
+      ],
+      "related": [
+        "scrible",
+        "combinatorial-decisions"
+      ]
+    },
+    {
+      "title": "SCRiBLe: Bandit Optimization with Self-Concordant Barriers",
+      "slug": "scrible",
+      "area": "online-learning",
+      "credits": [
+        "csci659"
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 659/wiki/Algorithm/SCRiBLe - Self-Concordant Regularization in Bandit Learning.md"
+        }
+      ],
+      "tags": [
+        "online_learning",
+        "bandits"
+      ]
+    },
+    {
+      "title": "Combinatorial Decisions and Convexification",
+      "slug": "combinatorial-decisions",
+      "area": "online-learning",
+      "credits": [
+        "csci659"
+      ],
+      "sources": [
+        {
+          "from": "Course/CS/CSCI 659/wiki/problems/Combinatorial Problems.md"
+        }
+      ],
+      "tags": [
+        "online_learning",
+        "bandits"
+      ]
+    },
+    {
+      "title": "Variational Autoencoders: Deriving the ELBO",
+      "slug": "variational-autoencoders",
+      "area": "machine-learning",
+      "sources": [
+        {
+          "from": "Wiki/AI Wiki/Basics/VAE.md"
+        }
+      ],
+      "related": [
+        "score-based-generative-models"
+      ]
+    },
+    {
+      "title": "Score-Based Generative Modeling: From Noise Levels to SDEs",
+      "slug": "score-based-generative-models",
+      "area": "machine-learning",
+      "sources": [
+        {
+          "from": "Wiki/AI Wiki/Basics/SCORE-BASED.md"
+        }
+      ]
+    },
+    {
+      "title": "Gradient-Based Optimizers: From SGD to AdamW",
+      "slug": "gradient-based-optimizers",
+      "area": "machine-learning",
+      "sources": [
+        {
+          "from": "Wiki/AI Wiki/Basics/Optimization.md",
+          "exclude": [
+            "### 1.2.func",
+            "### 1.2.eg"
+          ]
+        }
+      ],
+      "tags": [
+        "optimization"
+      ]
+    },
+    {
+      "title": "Gaussian Mixture Models and the EM Algorithm",
+      "slug": "gaussian-mixture-models",
+      "area": "probability",
+      "sources": [
+        {
+          "from": "Wiki/Statistics Wiki/Distribution/Gaussian Mixture Models (GMM).md"
+        }
+      ],
+      "related": [
+        "variational-autoencoders"
+      ]
+    },
+    {
+      "title": "Sub-Gaussian Variables and the Maximal Inequality",
+      "slug": "sub-gaussian",
+      "area": "probability",
+      "sources": [
+        {
+          "from": "Wiki/Statistics Wiki/Distribution/Sub-Gaussian Random Variables.md"
+        }
+      ]
+    },
+    {
+      "title": "Conditional Probability, Bayes' Rule and Total Probability",
+      "slug": "conditional-probability",
+      "area": "probability",
+      "sources": [
+        {
+          "from": "Wiki/Statistics Wiki/Probability/Conditional Probability.md"
+        }
+      ]
+    },
+    {
+      "title": "Least Squares with QR and Householder Reflectors",
+      "slug": "qr-and-householder",
+      "area": "numerical-linear-algebra",
+      "credits": [
+        "math501"
+      ],
+      "sources": [
+        {
+          "from": "Course/Math/MATH 501/In-Class/QR decomposition.md"
+        },
+        {
+          "from": "Course/Math/MATH 501/In-Class/Householder Reflector.md"
+        }
+      ],
+      "tags": [
+        "linear_algebra"
+      ]
+    },
+    {
+      "title": "Bang Bang Chicken Strips (棒棒鸡丝)",
+      "slug": "bang-bang-chicken",
+      "area": "cookbook",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Cook Book/Chinese/Bang Bang Chicken Strips (棒棒鸡丝).md"
+        }
+      ],
+      "fixes": [
+        {
+          "find": "\nAsk ChatGPT",
+          "replace": ""
+        },
+        {
+          "find": "\nLet me know if you want a LaTeX version or if you’re prepping the full cold dish set.",
+          "replace": ""
+        }
+      ],
+      "related": [
+        "strange-flavor-sauce"
+      ],
+      "tags": []
+    },
+    {
+      "title": "Cherry-Glazed Pork (樱桃肉)",
+      "slug": "cherry-glazed-pork",
+      "area": "cookbook",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Cook Book/Chinese/Cherry-Glazed Pork (樱桃肉).md"
+        }
+      ],
+      "related": [
+        "caramel",
+        "umami-enhancers"
+      ]
+    },
+    {
+      "title": "Spicy-Numbing Tofu (麻婆豆腐)",
+      "slug": "mapo-tofu",
+      "area": "cookbook",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Cook Book/Chinese/Spicy-Numbing Tofu (麻婆豆腐).md"
+        }
+      ]
+    },
+    {
+      "title": "Egg Pudding (紹子蒸蛋)",
+      "slug": "egg-pudding",
+      "area": "cookbook",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Cook Book/Chinese/Egg Pudding (紹子蒸蛋).md"
+        }
+      ]
+    },
+    {
+      "title": "Mustard Green and Bean Soup (酸菜豆瓣汤)",
+      "slug": "mustard-green-bean-soup",
+      "area": "cookbook",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Cook Book/Chinese/Muster Green-Bean Soup (酸菜豆瓣汤).md"
+        }
+      ],
+      "fixes": [
+        {
+          "find": "Muster Green",
+          "replace": "Mustard Green"
+        }
+      ]
+    },
+    {
+      "title": "Chicken Stock (高汤)",
+      "slug": "chicken-stock",
+      "area": "kitchen-modules",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Modular/Base/Stock (高汤)/Chicken Stock.md"
+        }
+      ],
+      "related": [
+        "mirepoix",
+        "umami-enhancers"
+      ]
+    },
+    {
+      "title": "Chicken Broth (清汤)",
+      "slug": "chicken-broth",
+      "area": "kitchen-modules",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Modular/Base/Broth (清汤)/Chicken Broth.md"
+        }
+      ],
+      "related": [
+        "chicken-stock"
+      ]
+    },
+    {
+      "title": "Caramel and Its Quenching Liquids",
+      "slug": "caramel",
+      "area": "kitchen-modules",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Modular/Ingredient/Caramel.md"
+        }
+      ]
+    },
+    {
+      "title": "Mirepoix",
+      "slug": "mirepoix",
+      "area": "kitchen-modules",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Modular/Ingredient/Mirepoix.md"
+        }
+      ]
+    },
+    {
+      "title": "Strange-Flavor Sauce (怪味酱)",
+      "slug": "strange-flavor-sauce",
+      "area": "kitchen-modules",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Modular/Sauce/Strange Flavor Sauce (怪味酱).md"
+        }
+      ]
+    },
+    {
+      "title": "Yuxiang Sauce (鱼香酱)",
+      "slug": "yuxiang-sauce",
+      "area": "kitchen-modules",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Modular/Sauce/Yuxiang sauce (鱼香酱).md"
+        }
+      ]
+    },
+    {
+      "title": "Umami Enhancers",
+      "slug": "umami-enhancers",
+      "area": "kitchen-modules",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Modular/Enhancer/Umami Enhancer.md"
+        }
+      ]
+    },
+    {
+      "title": "Fermentation Starter for Pickles",
+      "slug": "fermentation-starter",
+      "area": "kitchen-modules",
+      "sources": [
+        {
+          "from": "Wiki/z_Others/Cooking Wiki/Fermentation/Fermentation Starter (Inoculant, Pickle).md"
+        }
+      ]
+    }
+  ]
+}

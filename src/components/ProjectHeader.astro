@@ -1,0 +1,38 @@
+---
+import Icon from './Icon.astro';
+interface Props {
+  title: string; subtitle: string; status: string; role: string; period: string;
+  team?: string; tags?: string[]; links?: { label: string; href: string; icon?: string }[];
+  tldr?: string[];
+}
+const { title, subtitle, status, role, period, team, tags = [], links = [], tldr = [] } = Astro.props;
+---
+<a class="backlink" href="/research/"><Icon name="back" size={14} /> All projects</a>
+<header class="page-head">
+  <p class="eyebrow">{status}</p>
+  <h1>{title}</h1>
+  <p class="lede">{subtitle}</p>
+  <p class="meta">{role} · {period}{team && <><br />{team}</>}</p>
+  {tags.length > 0 && <ul class="chips">{tags.map((t) => <li class="chip">{t}</li>)}</ul>}
+  {links.length > 0 && (
+    <ul class="links">
+      {links.map((l, i) => (
+        <li><a class:list={['btn', { ghost: i > 0 }]} href={l.href} target={l.href.startsWith('http') ? '_blank' : undefined} rel="noopener"><Icon name={l.icon ?? 'link'} />{l.label}</a></li>
+      ))}
+    </ul>
+  )}
+</header>
+{tldr.length > 0 && (
+  <aside class="tldr">
+    <p class="tl">In short</p>
+    <ul>{tldr.map((t) => <li set:html={t} />)}</ul>
+  </aside>
+)}
+
+<style>
+  .tldr { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--ctl); border-radius: var(--radius); padding: 18px 22px 8px; margin: 0 0 2.5rem; }
+  .tl { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; color: var(--ctl-ink); margin: 0 0 .4rem; }
+  .tldr ul { padding-left: 1.1em; color: var(--ink-2); }
+  .tldr li { margin: .35rem 0; }
+  .tldr :global(strong) { color: var(--ink); }
+</style>

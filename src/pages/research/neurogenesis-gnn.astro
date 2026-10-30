@@ -1,0 +1,129 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProjectHeader from '../../components/ProjectHeader.astro';
+import Chart from '../../components/Chart.astro';
+import NeuroPipeline from '../../components/NeuroPipeline.astro';
+
+// Aggregate, cohort-level results only. No patient-level data is shown on this page.
+const regimes = [
+  { label: 'Zero-neurogenesis patients excluded', value: 29.08, slot: 2, note: 'Reference: the regression problem without the zero subgroup.' },
+  { label: 'Gate + head trained on all patients', value: 472.9, slot: 1 },
+  { label: 'No gate, head trained on all patients', value: 1145.73, slot: 'ref' },
+  { label: 'Gate + head trained on non-zero only', value: 8795.35, slot: 'ref', note: 'Gate false negatives reach a regressor that never saw a zero.' },
+  { label: 'No gate, head trained on non-zero only', value: 1e13, slot: 'ref', note: 'Approximate: unbounded extrapolation on zero patients.' },
+];
+
+// Leave-one-input-out ablation: change in patient-level relative error (percentage points) when the input is removed.
+// Positive = removing the input hurts (the input helps).
+const ablationRaw: [string, number][] = [
+  ['EEG O2', 14.49], ['EEG F4', 12.35], ['Disease duration', 12.31], ['EEG Fz', 12.01], ['EEG Fp1', 10.43], ['EEG Cz', 10.12],
+  ['EEG C4', 6.27], ['EEG F8', 5.35], ['EEG T5', 4.87], ['EEG T3', 3.04], ['EEG Pz', 2.86], ['EEG F3', 2.8], ['EEG P4', 2.46],
+  ['EEG O1', 2.01], ['EEG F7', 1.9], ['Age', 1.66], ['EEG Fp2', 1.5], ['EEG T6', 1.24], ['EEG T4', -1.2], ['EEG P3', -1.22], ['EEG C3', -1.41],
+];
+const ablation = ablationRaw.map(([label, value]) => ({
+  label, value,
+  slot: label === 'Disease duration' ? 1 : label === 'Age' ? 2 : 'ref',
+}));
+---
+<Base title="NeurogenesisGNN" description="Estimating patient-level hippocampal neurogenesis from EEG and clinical variables when thousands of clips come from only a few dozen patients.">
+  <ProjectHeader
+    title="NeurogenesisGNN"
+    subtitle="Estimating hippocampal neurogenesis from EEG when thousands of clips come from only 30 patients."
+    status="Ongoing"
+    role="Part-time research assistant · owner of the code base and ML pipeline"
+    period="Jun 2026 – present"
+    team="Collaboration between the Bonaguidi Lab (USC) and USC InfoLab / IMSC"
+    tags={['Small-n / high-d learning', 'Evaluation design', 'Biomedical ML', 'Interpretability']}
+    tldr={[
+      '<strong>13,000 clips ≠ 13,000 samples.</strong> The effective sample size is about 30 patients, so the prediction head is a statistical model (PLS + Ridge) on frozen EEG embeddings, not a deep network.',
+      'Zero-neurogenesis patients behave like a <strong>separate regime</strong>. A gate trained on all patients cut error from ~1,146% to ~473%, but its misses remain the main failure mode.',
+      'A <strong>learned percentile calibrator</strong> replaces the median for turning a patient’s clip predictions into one estimate.',
+    ]}
+  />
+
+  <h2>The question</h2>
+  <p>
+    Hippocampal neurogenesis is reported to decline in epilepsy, but it can only be measured in brain tissue. Our collaborators in the
+    Bonaguidi Lab asked whether it could be <em>estimated</em> from scalp EEG plus clinical variables such as age and disease duration.
+    Alisha Cayce (Bonaguidi Lab) proposed using <strong>NeuroGNN</strong>, an EEG graph model developed at USC InfoLab (not my work),
+    because it combines temporal, spatial and semantic structure. My job was to turn that idea into a working
+    system: adapt NeuroGNN as a feature extractor and build the data pipeline, prediction head, evaluation and analysis around it.
+  </p>
+
+  <h2>The data regime decides the model</h2>
+  <div class="stats">
+    <div class="stat"><div class="num">30</div><div class="lbl">patients: the real number of independent samples</div></div>
+    <div class="stat"><div class="num">≈13k</div><div class="lbl">60-second EEG clips (correlated within patient)</div></div>
+    <div class="stat"><div class="num">≈6.4k</div><div class="lbl">embedding dimensions per clip</div></div>
+    <div class="stat"><div class="num">9</div><div class="lbl">patients with zero measured neurogenesis</div></div>
+  </div>
+  <p>
+    I noticed the mismatch on day one. Clips from the same patient are not independent, so ~13k clips do not give a deep prediction head
+    enough signal, and a ~6.4k-dimensional input with this few subjects overfits easily. I compared Lasso, Ridge, SVR, PLS and
+    <strong>PLS + Ridge</strong>, and the combination worked best. PLS finds a few directions in the embedding that covary with the label
+    (supervised dimensionality reduction). Ridge then shrinks the weights on those components. Every step, scaling included, is fitted on
+    training folds only.
+  </p>
+
+  <NeuroPipeline />
+
+  <h2>Evaluating at the right unit</h2>
+  <p>
+    Splitting clips at random is fast and gives stable numbers, but clips from one patient land in both train and test, so it does not measure
+    generalization to <em>new patients</em>. Early on, patient-level folds were too unstable to guide development: some folds held a single
+    patient with a few minutes of EEG. I therefore used clip-level CV only as a development signal and treated it as such. As the cohort and
+    recordings grow, patient-level evaluation becomes the yardstick for any final claim.
+  </p>
+  <p>
+    Turning a patient’s clip predictions into one number also matters. The clip predictions have heavy outliers, so I first used the
+    <strong>median</strong>. Looking at individual patients showed the median was often not the closest percentile. The
+    <strong>calibrator</strong> learns from training patients which percentile of the clip-prediction distribution usually lands nearest
+    the true label, then reads that percentile off each test patient’s distribution.
+  </p>
+
+  <h2>A second regime: zero neurogenesis</h2>
+  <p>
+    Plotting prediction quality patient by patient showed that most severe outliers were patients with <em>zero</em> measured neurogenesis.
+    Two problems compound here. The relative-error metric is close to undefined near zero, since a 1-unit miss becomes a huge percentage.
+    A linear head also cannot fit a qualitative “off” state that sits far below every non-zero patient. A logistic zero/non-zero gate
+    (hurdle model) in front of the regressor helps, but which data each part sees matters a great deal:
+  </p>
+  <Chart
+    title="Patient-level relative error by configuration (log scale)"
+    spec={{ type: 'hbar', items: regimes, log: true, unit: '%', decimals: 1, xLabel: 'relative error (%, log scale)' }}
+    caption="Without the zero subgroup, the same pipeline reaches ~29%. With zero patients included, the best setup is a gate plus a regressor that has also seen zeros, so it degrades gracefully when the gate misses. A non-zero-only regressor without a gate extrapolates without bound. The zero subgroup currently looks like a different, likely non-linear regime, which is a hypothesis rather than a finding."
+    table={{ head: ['Configuration', 'Relative error (%)'], rows: regimes.map((r) => [r.label, r.value >= 1e6 ? '≈1e13' : r.value.toFixed(2)]) }}
+  />
+
+  <h2>What the inputs contribute</h2>
+  <p>
+    A leave-one-input-out ablation, alongside SHAP analysis, measures how much patient-level error rises when each input is removed. Two results
+    were instructive:
+  </p>
+  <ul>
+    <li><strong>Disease duration</strong> is among the most useful inputs, consistent with clinical reports that neurogenesis declines with longer epilepsy duration.</li>
+    <li><strong>Age</strong> adds little. The age–neurogenesis literature is mostly about healthy adults, and in this cohort the disease effect seems to dominate.</li>
+    <li>Inputs whose removal <em>helps</em> only help slightly. PLS assigns little weight to directions unrelated to the label, and Ridge limits what is left.</li>
+  </ul>
+  <Chart
+    title="Increase in patient-level error when one input is removed (percentage points)"
+    spec={{ type: 'hbar', items: ablation, signed: true, decimals: 1, xLabel: 'Δ relative error when removed (pp) · higher = more useful input' }}
+    caption="Baseline (all inputs, zero patients excluded): 29.1% relative error. These are predictive contributions in this cohort, not causal medical conclusions."
+    table={{ head: ['Removed input', 'Δ relative error (pp)'], rows: ablationRaw.map(([k, v]) => [k, v.toFixed(2)]) }}
+  />
+
+  <h2>What this project taught me</h2>
+  <p>
+    How to work with data that are scarce, heterogeneous and unevenly distributed. That means choosing models by effective sample size,
+    being explicit about what each evaluation can show, and finding subgroups that break a model. It was also my first time adapting
+    someone else’s model as a component for a new objective.
+  </p>
+
+  <h2>Next</h2>
+  <ul>
+    <li>Final results on patient-level cross-validation as the cohort grows toward the planned size.</li>
+    <li>Separate learned models for the zero and non-zero regimes behind the hurdle gate, and better calibrated gating.</li>
+    <li>Per-patient prediction variance as a first-class output, a prerequisite for anything clinical.</li>
+    <li>Add MRI as a further modality; explore fine-tuning the encoder on this task.</li>
+  </ul>
+</Base>
