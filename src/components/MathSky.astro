@@ -1,7 +1,9 @@
 ---
-// Background "shooting stars": formulas from my own notes and papers drift diagonally through the
-// empty margins beside the text column and, near the end of the fall, burn up into their own symbols. KaTeX renders them at build time into /math-sky.json
-// (src/pages/math-sky.json.ts); the page only fetches that file on wide screens without reduced motion.
+// Background "shooting stars": formulas from my own notes and papers drift diagonally and, near the end
+// of the fall, burn up into their own symbols. On wide screens (>= 1200px) they fly through the empty
+// margins beside the text column; on phones and tablets there are no margins, so they cross the whole
+// screen behind the text, very faint. KaTeX renders them at build time into /math-sky.json
+// (src/pages/math-sky.json.ts); nothing is fetched or animated when reduced motion is on.
 import 'katex/dist/katex.min.css';
 ---
 <div class="sky" aria-hidden="true" data-sky></div>
@@ -20,7 +22,9 @@ import 'katex/dist/katex.min.css';
     let timer = 0, last = -1, live = 0;
 
     // Free horizontal bands left and right of the text column, in viewport px.
+    // Narrow screens: the whole width (the stars are faint there, see .sky.faint).
     const gutters = () => {
+      if (!wide.matches) return [[12, window.innerWidth - 12]];
       const col = document.querySelector('.main > .content')?.getBoundingClientRect();
       const side = document.querySelector('.sidebar, aside[class*="side"]')?.getBoundingClientRect();
       if (!col) return [];
@@ -124,20 +128,24 @@ import 'katex/dist/katex.min.css';
       });
     };
 
+    const mode = () => sky.classList.toggle('faint', !wide.matches);
     const schedule = async () => {
       clearTimeout(timer);
-      if (still.matches || !wide.matches || !(await load())) return;
-      timer = window.setTimeout(() => { launch(); schedule(); }, 6000 + Math.random() * 4000);
+      mode();
+      if (still.matches || !(await load())) return;
+      timer = window.setTimeout(() => { launch(); schedule(); }, 4000 + Math.random() * 3000); // a star every 4–7 s
     };
     [still, wide].forEach((m) => m.addEventListener('change', schedule));
     document.addEventListener('visibilitychange', schedule);
-    window.setTimeout(async () => { if (!still.matches && wide.matches && (await load())) launch(); }, 900);
+    window.setTimeout(async () => { if (!still.matches && (await load())) launch(); }, 900);
     schedule();
   }
 </script>
 
 <style>
   .sky { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  /* phones & tablets: the stars cross behind the text, so keep them very faint */
+  .sky.faint { opacity: .28; }
   .sky :global(.star) {
     --c: color-mix(in srgb, var(--accent) 78%, var(--ink-2));
     position: absolute; top: 0; left: 0; transform-origin: 50% 50%;

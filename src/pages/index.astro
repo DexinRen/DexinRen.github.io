@@ -16,6 +16,7 @@ const steps = ['Unexpected result', 'Question the assumptions', 'Competing hypot
     <div class="hero-text">
     <p class="eyebrow">{site.role}</p>
     <h1>{site.name}</h1>
+    <Portrait />
     <p class="lede">
       I study <em>why</em> machine-learning models generalize or fail, focusing on how data distributions,
       learning objectives, representations and inductive biases interact. I am most interested in settings where the data are limited, shifted,
@@ -30,7 +31,6 @@ const steps = ['Unexpected result', 'Question the assumptions', 'Competing hypot
       <li><a class="btn ghost" href={site.github.href} target="_blank" rel="me noopener"><Icon name="github" />GitHub</a></li>
     </ul>
     </div>
-    <Portrait />
   </section>
 
   <section>
@@ -126,12 +126,16 @@ const steps = ['Unexpected result', 'Question the assumptions', 'Competing hypot
 </Base>
 
 <style>
-  .hero { display: flex; gap: clamp(24px, 4vw, 48px); align-items: center; }
-  .hero-text { flex: 1 1 auto; min-width: 0; }
-  .hero :global(.portrait) { --portrait: clamp(180px, 22vw, 230px); }
-  @media (max-width: 760px) {
-    .hero { flex-direction: column-reverse; align-items: flex-start; gap: 20px; }
-    .hero :global(.portrait) { --portrait: 150px; }
+  /* tablet & desktop: text in the left column, the portrait in the right column, centred on the text block */
+  .hero-text { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: clamp(24px, 4vw, 48px); }
+  .hero-text > * { grid-column: 1; margin-top: 0; }
+  .hero-text > .links { margin-top: .75rem; }
+  .hero :global(.portrait) { grid-column: 2; grid-row: 1 / span 5; align-self: center; --portrait: clamp(180px, 22vw, 230px); }
+  /* phone: the portrait floats right under the name and the description wraps around it */
+  @media (max-width: 639px) {
+    .hero-text { display: block; }
+    .hero :global(.portrait) { float: right; --portrait: clamp(112px, 34vw, 150px); margin: 4px 0 10px 16px; }
+    .hero .status-list, .hero .links { clear: both; }
   }
   .hero h1 { font-size: clamp(2.4rem, 1.8rem + 2.6vw, 3.4rem); margin-bottom: .3em; }
   .hero .lede em { font-family: var(--font-serif); font-size: 1.08em; }
