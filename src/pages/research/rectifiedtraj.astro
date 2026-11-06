@@ -50,7 +50,7 @@ const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
   <ProjectHeader
     title="RectifiedTraj"
     subtitle="Map-free, causal GPS trajectory denoising that runs on a phone."
-    status="Published · ACM SIGSPATIAL 2026"
+    status="Published · ACM SIGSPATIAL 2026 · Best UMFM Workshop Paper Award"
     role="First-author lead, USC InfoLab"
     period="Aug 2025 – Sep 2026"
     team="With Shang-Ling Hsu, Chen Chu, Lifeng Lin, Ryosuke Shibasaki, Noboru Koshizuka and Cyrus Shahabi"
@@ -58,6 +58,8 @@ const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
     links={[
       { label: 'Paper (DOI)', href: 'https://doi.org/10.1145/3841645.3843430', icon: 'file' },
       { label: 'Extended study (DOI)', href: 'https://doi.org/10.1145/3849729.3856129', icon: 'file' },
+      { label: 'Extended-study slides', href: '/media/rectifiedtraj/rectifiedtraj_revisited_slides.pdf', icon: 'download' },
+      { label: 'Best Workshop Paper Award', href: '/media/rectifiedtraj/umfm_best_workshop_paper_award.pdf', icon: 'award' },
       { label: 'Poster', href: '/media/rectifiedtraj/rectifiedtraj_poster.pdf', icon: 'download' },
       { label: 'Code', href: 'https://github.com/DexinRen/RectifiedTraj', icon: 'code' },
     ]}
@@ -103,8 +105,9 @@ const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
   <h2>What it looks like</h2>
   <p>
     Every method below sees the same noisy trajectories from central Tokyo. In the extended study I compared fourteen of them, from
-    classical filters to diffusion. Pick a method above the map: line width encodes each trajectory's error, so a clean method draws a
-    fine street map and a poor one smears it.
+    classical filters to diffusion. Ground truth stays on the left; drag the slider to change the method on the right. Methods are
+    ordered from lowest to highest error, and line width encodes each trajectory's error, so the street map gets
+    progressively smeared as you slide right.
   </p>
   <TrajGallery
     items={[
@@ -125,7 +128,7 @@ const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
       { key: 'valhalla-meili', label: 'Valhalla Meili', mean10: 30.34, online10: null, mean2m: 29.18, causal: false },
       { key: 'ground-truth', label: 'Ground truth', mean10: null, online10: null, mean2m: null, causal: false },
     ]}
-    caption="NUMOSIM-Kanto city-centre subset near the Imperial Palace, Tokyo, from the extended study's qualitative figure. Between Raw GPS (first) and ground truth (last), tabs are ordered from lowest to highest mean error at the native 10 s interval (full test set). Each trajectory's line width encodes its average error, so thinner is better."
+    caption="NUMOSIM-Kanto city-centre subset near the Imperial Palace, Tokyo, from the extended study's qualitative figure. Slider stops are ordered from lowest to highest mean error at the native 10 s interval (full test set). Each trajectory's line width encodes its average error, so thinner is better."
   />
 
   <h2>The finding I care most about</h2>
@@ -226,6 +229,14 @@ const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
       <figcaption>Conference poster. Click for the PDF.</figcaption>
     </figure>
   </div>
+  <figure class="presenting">
+    <img src="/media/rectifiedtraj/sigspatial2026_presenting.webp" alt="Dexin Ren standing next to the RectifiedTraj poster at ACM SIGSPATIAL 2026" width="900" height="1200" loading="lazy" />
+    <figcaption>
+      Presenting poster R-133 at ACM SIGSPATIAL 2026 in Riverside, California. The extended study, <em>RectifiedTraj Revisited</em>, received the
+      <a href="/media/rectifiedtraj/umfm_best_workshop_paper_award.pdf">Best UMFM Workshop Paper Award</a>
+      (<a href="/media/rectifiedtraj/rectifiedtraj_revisited_slides.pdf">slides</a>).
+    </figcaption>
+  </figure>
 
   <h2>Open questions</h2>
   <ul>
@@ -245,4 +256,7 @@ const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
   .media video { width: 100%; border-radius: var(--radius-sm); background: #000; aspect-ratio: 16 / 9; }
   .poster-link img { border-radius: var(--radius-sm); border: 1px solid var(--line); max-height: 420px; width: auto; margin: 0 auto; }
   .poster-link { display: block; }
+  .presenting { margin: 1.75rem 0 0; }
+  .presenting img { display: block; width: auto; max-width: 100%; max-height: 560px; margin: 0 auto; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+  .presenting figcaption { text-align: center; }
 </style>

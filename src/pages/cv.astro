@@ -5,7 +5,7 @@ import { site } from '../data/site';
 import { pubs } from '../data/publications';
 
 const education = [
-  { school: 'University of Southern California', degree: 'M.S. Computer Science (General)', when: 'Jan 2025 – Dec 2026', note: 'GPA 3.7 / 4.0' },
+  { school: 'University of Southern California', degree: 'M.S. Computer Science (General)', when: 'Jan 2025 – Dec 2026', note: 'GPA 3.7 / 4.0 · Research supervisor: Prof. Cyrus Shahabi' },
   { school: 'University of Illinois Urbana-Champaign', degree: 'B.S. Mathematics + Computer Science', when: 'Aug 2021 – May 2024', note: 'GPA 3.62 / 4.0 · High Distinction' },
 ];
 
@@ -83,11 +83,19 @@ const skills = [
     {pubs.map((p) => (
       <li>
         {p.authors.map((a, i) => <>{a === 'Dexin Ren' ? <strong>{a}</strong> : a}{i < p.authors.length - 1 ? ', ' : '. '}</>)}
-        <em>{p.title}.</em> {p.venueShort}{p.status ? ` (${p.status.toLowerCase()})` : ''}.
+        <em>{p.title}.</em> {p.venueShort}{p.status ? ` (${p.status.toLowerCase()})` : ''}.{p.award && <> <strong class="cv-award">{p.award}.</strong></>}
         {p.links[0] && <> <a href={p.links[0].href} target="_blank" rel="noopener">{p.links[0].label}</a></>}
       </li>
     ))}
   </ol>
+
+  <h2>Honors &amp; awards</h2>
+  {pubs.filter((p) => p.award).map((p) => (
+    <div class="row">
+      <div class="rl"><strong>{p.award}</strong><span class="ink-2"><em>{p.title}</em> · {p.venueShort}</span></div>
+      <div class="rr muted small">Nov {p.year}</div>
+    </div>
+  ))}
 
   <h2>Research experience</h2>
   {experience.map((x) => (
@@ -112,6 +120,7 @@ const skills = [
   h2 { font-size: 1.05rem; font-family: var(--font-sans); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--line-strong); padding-bottom: .4rem; margin-top: 2.5rem; }
   .row { display: flex; justify-content: space-between; gap: 16px; margin: .9rem 0 .3rem; }
   .rl { display: flex; flex-direction: column; gap: 2px; }
+  .cv-award { color: var(--accent-ink); font-weight: 600; }
   .rr { white-space: nowrap; padding-top: .15em; }
   .et { font-weight: 600; color: var(--ink); text-decoration: none; }
   .et:hover { color: var(--accent-ink); }

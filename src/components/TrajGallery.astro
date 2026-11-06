@@ -1,91 +1,143 @@
 ---
-// Qualitative study for RectifiedTraj: one large panel with method tabs on top (click to switch).
+// Qualitative study for RectifiedTraj: ground truth pinned on the left, the chosen method on the right,
+// and a slider underneath whose stops are the methods sorted by error (ground truth at 0, then lowest
+// to highest mean error at 10 s). Sliding right shows the street map getting progressively smeared.
 // Panels come from the extended paper's qualitative figure; all are painted in one colour so that
 // line width (= each trajectory's error) is the only thing that changes between methods.
-// Images are alpha masks in public/media/rectifiedtraj/qual/, loaded when their tab is first opened.
+// The figure is the 10 s test, so only 10 s numbers are shown (online10 / mean2m are kept in the data but unused).
+// Images are alpha masks in public/media/rectifiedtraj/qual/, loaded when their stop is first reached.
 interface Item { key: string; label: string; mean10: number | null; online10: number | null; mean2m: number | null; causal: boolean }
 interface Props { items: Item[]; caption: string }
 const { items, caption } = Astro.props;
 const base = '/media/rectifiedtraj/qual';
+
+const gt = items.find((it) => it.mean10 == null)!;
+const ranked = [gt, ...items.filter((it) => it.mean10 != null).sort((a, b) => a.mean10! - b.mean10!)];
+
 const fmt = (v: number | null) => (v == null ? 'N/A' : `${v.toFixed(2)} m`);
 const note = (it: Item) =>
   it.mean10 == null
-    ? `${it.label}: the reference every method is scored against.`
-    : `${it.label}${it.causal ? ' (causal)' : ''}: ${fmt(it.mean10)} mean error at 10 s` +
-      (it.online10 != null ? `, ${fmt(it.online10)} online` : '') +
-      (it.mean2m != null ? `; ${fmt(it.mean2m)} at 2 min.` : '.');
+    ? 'Ground truth: the reference every method is scored against. Slide right to compare.'
+    : `${it.causal ? 'Causal' : 'Non-causal'} · ${fmt(it.mean10)} mean error at the 10 s sampling interval used in this figure`;
 ---
 <figure class="tt" data-tt>
-  <div class="tabs" role="tablist" aria-label="Choose a method">
-    {items.map((it, i) => (
-      <button type="button" role="tab" class="tab" aria-selected={i === 0 ? 'true' : 'false'} data-i={i}>{it.label}</button>
-    ))}
+  <div class="pair">
+    <div class="tp">
+      <p class="pl">Ground truth</p>
+      <div class="stage">
+        <div class="layer on" role="img" aria-label="Ground-truth trajectories" style={`--img: url(${base}/${gt.key}.webp)`} />
+      </div>
+    </div>
+    <div class="tp">
+      <p class="pl" aria-live="polite"><span class="pl-name">{ranked[0].label}</span></p>
+      <div class="stage">
+        {ranked.map((it, i) => (
+          <div
+            class:list={['layer', { on: i === 0 }]}
+            role="img"
+            aria-label={`${it.label} trajectories`}
+            data-src={`${base}/${it.key}.webp`}
+            style={i === 0 ? `--img: url(${base}/${it.key}.webp)` : undefined}
+          />
+        ))}
+      </div>
+    </div>
   </div>
-  <div class="stage">
-    {items.map((it, i) => (
-      <div
-        class:list={['layer', { on: i === 0 }]}
-        role="img"
-        aria-label={`${it.label} trajectories`}
-        data-src={`${base}/${it.key}.webp`}
-        style={i === 0 ? `--img: url(${base}/${it.key}.webp)` : undefined}
-      />
-    ))}
+
+  <p class="note" aria-live="polite">{note(ranked[0])}</p>
+
+  <div class="slider">
+    <input
+      type="range" min="0" max={ranked.length - 1} step="1" value="0"
+      aria-label="Method, ordered from ground truth to highest error"
+      aria-valuetext={ranked[0].label}
+    />
+    <ol class="ticks" style={`--n: ${ranked.length}`} aria-hidden="true">
+      {ranked.map((it, i) => (
+        <li class:list={[{ on: i === 0 }]} data-i={i}><span>{it.label}</span></li>
+      ))}
+    </ol>
+    <div class="ends" aria-hidden="true"><span>lower error</span><span>higher error →</span></div>
   </div>
-  <p class="note" aria-live="polite">{note(items[0])}</p>
+
   <figcaption>{caption}</figcaption>
-  <script type="application/json" class="tt-notes" set:html={JSON.stringify(items.map(note))} />
+  <script type="application/json" class="tt-data" set:html={JSON.stringify(ranked.map((it) => ({ label: it.label, note: note(it) })))} />
 </figure>
 
 <script>
   document.querySelectorAll<HTMLElement>('[data-tt]').forEach((fig) => {
-    const tabs = Array.from(fig.querySelectorAll<HTMLButtonElement>('.tab'));
-    const layers = Array.from(fig.querySelectorAll<HTMLElement>('.layer'));
-    const notes = JSON.parse(fig.querySelector('.tt-notes')!.textContent || '[]') as string[];
+    const range = fig.querySelector<HTMLInputElement>('input[type=range]')!;
+    const layers = Array.from(fig.querySelectorAll<HTMLElement>('.tp:last-child .layer'));
+    const ticks = Array.from(fig.querySelectorAll<HTMLElement>('.ticks li'));
+    const data = JSON.parse(fig.querySelector('.tt-data')!.textContent || '[]') as { label: string; note: string }[];
+    const name = fig.querySelector('.pl-name')!;
     const note = fig.querySelector('.note')!;
     const load = (k: number) => {
       const l = layers[k];
       if (l && !l.style.getPropertyValue('--img')) l.style.setProperty('--img', `url(${l.dataset.src})`);
     };
     const show = (k: number) => {
-      [k, k + 1, k - 1].forEach(load); // current panel plus its neighbours
-      tabs.forEach((t, j) => t.setAttribute('aria-selected', String(j === k)));
+      [k, k + 1, k - 1].forEach(load); // current stop plus its neighbours
       layers.forEach((l, j) => l.classList.toggle('on', j === k));
-      note.textContent = notes[k] ?? '';
+      ticks.forEach((t, j) => t.classList.toggle('on', j === k));
+      name.textContent = data[k]?.label ?? '';
+      note.textContent = data[k]?.note ?? '';
+      range.setAttribute('aria-valuetext', data[k]?.label ?? '');
     };
-    tabs.forEach((t, k) => t.addEventListener('click', () => show(k)));
-    fig.querySelector('.tabs')!.addEventListener('keydown', (e) => {
-      const ev = e as KeyboardEvent;
-      const cur = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
-      const step = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0;
-      if (!step) return;
-      const k = (cur + step + tabs.length) % tabs.length;
-      show(k); tabs[k].focus();
-    });
+    range.addEventListener('input', () => show(Number(range.value)));
+    // clicking a tick label jumps to that stop
+    ticks.forEach((t, k) => t.addEventListener('click', () => { range.value = String(k); show(k); }));
     load(1);
   });
 </script>
 
 <style>
   .tt { margin: 1.5rem 0 2.5rem; }
-  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .tab {
-    font: inherit; font-size: .78rem; padding: 5px 11px; border-radius: 999px;
-    border: 1px solid var(--line-strong); background: transparent; color: var(--ink-2); cursor: pointer;
-  }
-  .tab:hover { color: var(--ink); border-color: var(--ink-3); }
-  .tab[aria-selected='true'] { background: var(--ctl); border-color: var(--ctl); color: var(--on-ctl); }
-  /* the panel fills the column edge to edge: no inner padding, no letterboxing */
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 620px; margin: 0 auto; }
+  .tp { min-width: 0; }
+  .pl { margin: 0 0 6px; font-size: .78rem; font-weight: 600; color: var(--ink-2); letter-spacing: .02em; }
+  .tp:last-child .pl { color: var(--accent-ink); }
   .stage {
-    position: relative; aspect-ratio: 1 / 1; border-radius: var(--radius); overflow: hidden;
+    position: relative; aspect-ratio: 1 / 1; border-radius: var(--radius-sm); overflow: hidden;
     background: var(--surface); border: 1px solid var(--line);
   }
   .layer {
-    position: absolute; inset: 0; opacity: 0; transition: opacity .45s ease;
+    position: absolute; inset: 0; opacity: 0; transition: opacity .3s ease;
     background: var(--accent);
     -webkit-mask: var(--img) center / contain no-repeat; mask: var(--img) center / contain no-repeat;
   }
   .layer.on { opacity: 1; }
-  .note { font-size: .88rem; color: var(--ink-2); margin: 10px 0 0; min-height: 1.5em; }
-  figcaption { font-size: .82rem; color: var(--ink-3); margin-top: 6px; }
+  .note { max-width: 620px; margin: 10px auto 0; font-size: .86rem; color: var(--ink-2); min-height: 1.5em; }
+
+  /* slider: one stop per method; tick labels sit under the stops like an x axis */
+  .slider { max-width: 620px; margin: 14px auto 0; --thumb: 18px; }
+  .slider input {
+    display: block; width: 100%; margin: 0; accent-color: var(--accent); cursor: pointer;
+  }
+  .ticks {
+    list-style: none; padding: 0; margin: 4px 0 0; display: grid;
+    /* centres of the stops line up with the thumb positions */
+    grid-template-columns: repeat(var(--n), 1fr);
+    margin-inline: calc(var(--thumb) / 2 - (100% - var(--thumb)) / (2 * (var(--n) - 1)));
+  }
+  .ticks li { margin: 0; height: 104px; position: relative; cursor: pointer; }
+  .ticks li::before {
+    content: ''; position: absolute; top: 0; left: 50%; width: 1px; height: 6px; background: var(--line-strong);
+  }
+  .ticks span {
+    position: absolute; top: 10px; left: 50%; transform-origin: 0 0; transform: rotate(60deg);
+    white-space: nowrap; font-size: .7rem; color: var(--ink-3);
+  }
+  .ticks li.on span { color: var(--accent-ink); font-weight: 600; }
+  .ticks li.on::before { background: var(--accent); height: 8px; width: 2px; }
+  .ticks li:hover span { color: var(--ink); }
+  .ends { display: none; justify-content: space-between; font-size: .72rem; color: var(--ink-3); margin-top: 4px; }
+  figcaption { max-width: 620px; margin: 6px auto 0; font-size: .8rem; color: var(--ink-3); }
+
+  /* phones: no room for 16 rotated labels; the current name sits above the right panel instead */
+  @media (max-width: 639px) {
+    .pair { gap: 8px; }
+    .ticks { display: none; }
+    .ends { display: flex; }
+  }
 </style>

@@ -1,5 +1,6 @@
 // Newest first. Keep each item to one line; link to the relevant page when possible.
 export const news: { date: string; html: string }[] = [
+  { date: 'Nov 2026', html: '<em>RectifiedTraj Revisited</em> received the <a href="/media/rectifiedtraj/umfm_best_workshop_paper_award.pdf"><strong>Best UMFM Workshop Paper Award</strong></a> at ACM SIGSPATIAL 2026 (<a href="/media/rectifiedtraj/rectifiedtraj_revisited_slides.pdf">slides</a>).' },
   { date: 'Nov 2026', html: '<a href="/research/rectifiedtraj/">RectifiedTraj</a> (short paper) and <em>RectifiedTraj Revisited</em> (UMFM workshop) appear at ACM SIGSPATIAL 2026.' },
   { date: 'Sep 2026', html: 'Started leading <a href="/research/trafficwhatif/">TrafficWhatIf</a>, a data-first project on intervention-aware traffic prediction.' },
   { date: 'Jun 2026', html: 'Joined the <a href="/research/neurogenesis-gnn/">NeurogenesisGNN</a> collaboration with the Bonaguidi Lab at USC.' },

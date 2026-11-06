@@ -1,5 +1,6 @@
 ---
 import type { Pub } from '../data/publications';
+import Icon from './Icon.astro';
 interface Props { pub: Pub; compact?: boolean }
 const { pub, compact = false } = Astro.props;
 const id = pub.bibtex.match(/\{([^,]+),/)?.[1] ?? pub.title;
@@ -11,6 +12,13 @@ const id = pub.bibtex.match(/\{([^,]+),/)?.[1] ?? pub.title;
   </div>
   <div class="body">
     <h3 class="pt">{pub.project ? <a href={`/research/${pub.project}/`}>{pub.title}</a> : pub.title}</h3>
+    {pub.award && (
+      <p class="award-row">
+        {pub.awardHref
+          ? <a class="award" href={pub.awardHref} target="_blank" rel="noopener" title="View the award certificate (PDF)"><Icon name="award" size={14} />{pub.award}</a>
+          : <span class="award"><Icon name="award" size={14} />{pub.award}</span>}
+      </p>
+    )}
     <p class="au">
       {pub.authors.map((a, i) => (
         <>
@@ -44,6 +52,10 @@ const id = pub.bibtex.match(/\{([^,]+),/)?.[1] ?? pub.title;
   .pt { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 500; margin: 0 0 .35rem; line-height: 1.35; }
   .pt a { color: var(--ink); text-decoration: none; }
   .pt a:hover { color: var(--accent-ink); }
+  .award-row { margin: 0 0 .4rem; }
+  a.award { text-decoration: none; }
+  a.award:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  .award { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 2px 10px 2px 8px; border-radius: 999px; font-size: .76rem; font-weight: 600; color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
   .au { font-size: .88rem; color: var(--ink-2); margin: 0 0 .2rem; }
   .au strong { color: var(--ink); font-weight: 600; }
   .vn { font-size: .82rem; color: var(--ink-3); font-style: italic; margin: 0 0 .2rem; }

@@ -6,6 +6,8 @@ export interface Pub {
   year: number;
   type: string;               // e.g. "Short research paper"
   status?: string;            // e.g. "To appear"
+  award?: string;             // shown as a badge, e.g. "Best Workshop Paper Award"
+  awardHref?: string;         // the badge links here (e.g. the certificate)
   links: { label: string; href: string }[];
   project?: string;           // slug of related project page
   selected?: boolean;
@@ -46,8 +48,11 @@ export const pubs: Pub[] = [
     year: 2026,
     type: 'Long research paper (workshop)',
     status: 'To appear',
+    award: 'Best UMFM Workshop Paper Award',
+    awardHref: '/media/rectifiedtraj/umfm_best_workshop_paper_award.pdf',
     links: [
       { label: 'DOI', href: 'https://doi.org/10.1145/3849729.3856129' },
+      { label: 'Slides', href: '/media/rectifiedtraj/rectifiedtraj_revisited_slides.pdf' },
       { label: 'Code', href: 'https://github.com/DexinRen/RectifiedTraj' },
     ],
     project: 'rectifiedtraj',
