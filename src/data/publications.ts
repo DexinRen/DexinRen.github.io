@@ -51,7 +51,7 @@ export const pubs: Pub[] = [
     award: 'Best UMFM Workshop Paper Award',
     awardHref: '/media/rectifiedtraj/umfm_best_workshop_paper_award.pdf',
     links: [
-      { label: 'DOI', href: 'https://doi.org/10.1145/3849729.3856129' },
+      { label: 'Preprint', href: '/media/rectifiedtraj/rectifiedtraj_revisited_preprint.pdf' },
       { label: 'Slides', href: '/media/rectifiedtraj/rectifiedtraj_revisited_slides.pdf' },
       { label: 'Code', href: 'https://github.com/DexinRen/RectifiedTraj' },
     ],
