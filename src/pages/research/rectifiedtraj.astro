@@ -121,7 +121,7 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     </div>
     <figure class="arch">
       <Fragment set:html={archSvg} />
-      <figcaption>Causal local–global denoising network (from the paper).</figcaption>
+      <figcaption>Causal Hybrid architecture (from the papers). The CNN extracts local movement patterns; its features join the input-chunk embedding before the causal Transformer, and a pointwise linear projection outputs each point's rectified-flow velocity.</figcaption>
     </figure>
   </div>
 
