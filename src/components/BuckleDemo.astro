@@ -1,0 +1,243 @@
+---
+// Head-buckle explorer for RectifiedTraj (one merged figure, stipple encoding).
+// Bottom band: RT-Hybrid's error at each of the 256 positions of the prediction window, drawn as a
+//   one-row "heatmap" in which dot density (not colour) encodes error. A vertical bar marks Q, the
+//   head-buckle length; positions left of it are discarded.
+// Top band: the reassembled trajectory (5,000 points, mean over 200 trajectories) for that Q, same encoding.
+// At Q = 0 a bracket marks the error-heavy start of the window and an arrow ties it to one of the
+// evenly spaced dense strips in the trajectory.
+// Data: /media/rectifiedtraj/buckle_sweep.json, extracted from the extended study's Q-sweep run
+// (NUMOSIM-Kanto, native 10 s). Overall errors are the sweep's ℓ1 means, identical to Table 6.
+---
+<figure class="bk" data-bk data-src="/media/rectifiedtraj/buckle_sweep.json">
+  <div class="bk-read" aria-live="polite">
+    <div><span class="lab">Head buckle Q</span><span class="val" data-r="q">0</span><span class="sub" data-r="keep">keep all 256 predictions per window</span></div>
+    <div><span class="lab">Overall mean error</span><span class="val" data-r="err">3.04 m</span><span class="sub" data-r="delta">no head buckle</span></div>
+    <div><span class="lab">Retained predictions</span><span class="val" data-r="pps">37,832/s</span><span class="sub">throughput on the test GPU</span></div>
+  </div>
+
+  <div class="bk-stage">
+    <svg viewBox="0 0 760 322" class="bk-svg" role="img" aria-label="Dot-density map of the reassembled trajectory's error (top) and of the error at each position of the prediction window (bottom), for the chosen head-buckle length Q">
+      <defs>
+        <marker id="bk-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0L10,5L0,10z" class="ah" />
+        </marker>
+        <marker id="bk-head-strong" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M0,0L10,5L0,10z" class="ah strong" />
+        </marker>
+      </defs>
+      <text x="30" y="15" class="cap">Reassembled trajectory · 5,000 points</text>
+      <g class="key"></g>
+      <rect class="band" x="30" y="22" width="700" height="38" />
+      <path class="top dots" d="" />
+      <g class="link"></g>
+      <text x="730" y="164" text-anchor="end" class="cap">RT-Hybrid error across one 256-point prediction window</text>
+      <rect class="band" x="30" y="176" width="700" height="70" />
+      <rect class="shade" x="30" y="176" width="0" height="70" />
+      <path class="bot dots" d="" />
+      <path class="bot dots cut" d="" />
+      <g class="axis"></g>
+      <g class="bar"></g>
+      <rect class="hit" x="30" y="168" width="700" height="86" />
+    </svg>
+    <p class="bk-loading">Loading the sweep…</p>
+  </div>
+
+  <div class="bk-slider">
+    <input type="range" min="0" max="16" step="1" value="0" aria-label="Head-buckle length Q" aria-valuetext="Q = 0" />
+  </div>
+
+  <figcaption>
+    Denser dots mean higher error (log scale, the same in both rows). Drag the bar along the lower band, or use the slider: predictions
+    left of the bar have too little past context and are discarded before overlapping windows are stitched back together.
+    RT-Hybrid on NUMOSIM-Kanto at its native 10 s, 200 trajectories. Overall errors are the ℓ1 means from the paper's head-buckle
+    sweep, measured for Q in steps of 16 and at 255.
+  </figcaption>
+</figure>
+
+<script>
+  type Sweep = { q: number; l1: number; l2: number; pps: number; bins: number[] };
+  type Data = { chunk: number[]; sweep: Sweep[] };
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag: string, a: Record<string, string | number>, text?: string) => {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(a)) e.setAttribute(k, String(v));
+    if (text != null) e.textContent = text;
+    return e;
+  };
+  // small seeded PRNG so the stipple pattern is stable between renders
+  const rng = (seed: number) => () => {
+    seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  // error (m) → share of the cell covered by dots: log scale between 1.5 m and 16 m, then a power curve so that
+  // the low-error majority stays sparse and the error-heavy cells stand out
+  const LO = Math.log(1.5), HI = Math.log(16);
+  const density = (v: number) => {
+    const t = Math.max(0, Math.min(1, (Math.log(Math.max(v, 1.5)) - LO) / (HI - LO)));
+    return Math.max(0.004, Math.pow(t, 1.8));
+  };
+  const R = 0.85; // dot radius (SVG units)
+  // stipple one row of cells into a single path string
+  const stipple = (vals: number[], x0: number, w: number, y0: number, h: number, seed: number, from = 0, to = vals.length) => {
+    const rand = rng(seed);
+    const cw = w / vals.length, cap = (cw * h) / (Math.PI * R * R * 1.8);
+    let d = '';
+    for (let i = 0; i < vals.length; i++) {
+      const expected = density(vals[i]) * cap;
+      const n = Math.floor(expected) + (rand() < expected % 1 ? 1 : 0);
+      for (let j = 0; j < n; j++) {
+        const x = x0 + (i + rand()) * cw, y = y0 + R + rand() * (h - 2 * R);
+        if (i >= from && i < to) d += `M${(x - R).toFixed(1)},${y.toFixed(1)}a${R},${R} 0 1 0 ${2 * R},0a${R},${R} 0 1 0 ${-2 * R},0`;
+      }
+    }
+    return d;
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-bk]').forEach((fig) => {
+    const svg = fig.querySelector('svg')!;
+    const q$ = <T extends Element>(s: string) => svg.querySelector(s) as T;
+    const range = fig.querySelector<HTMLInputElement>('input[type=range]')!;
+    const out = (k: string) => fig.querySelector<HTMLElement>(`[data-r="${k}"]`)!;
+    let data: Data | null = null;
+
+    const X0 = 30, X1 = 730, W = X1 - X0;
+    const T0 = 22, TH = 38;            // top band
+    const B0 = 176, BH = 70;           // bottom band
+    const cw = W / 256;
+    const xQ = (q: number) => X0 + q * cw;
+    const HEAVY = 24;                  // positions 0–23: error above ~4 m at the start of the window
+
+    const drawStatic = (d: Data) => {
+      // density key
+      const key = q$<SVGGElement>('.key');
+      key.append(el('text', { x: X1 - 128, y: 15, 'text-anchor': 'end', class: 'tick' }, 'low error'));
+      [1.6, 3, 6, 15].forEach((v, i) => {
+        const x = X1 - 122 + i * 22;
+        key.append(el('rect', { x, y: 6, width: 16, height: 11, class: 'keycell' }));
+        key.append(el('path', { d: stipple([v], x, 16, 6, 11, 7 + i), class: 'dots' }));
+      });
+      key.append(el('text', { x: X1, y: 15, 'text-anchor': 'end', class: 'tick' }, 'high'));
+      // axis: only the two ends, each explained by an arrow
+      const ax = q$<SVGGElement>('.axis');
+      ax.append(el('text', { x: X0, y: B0 + BH + 15, class: 'tick end' }, '0'));
+      ax.append(el('text', { x: X1, y: B0 + BH + 15, 'text-anchor': 'end', class: 'tick end' }, '255'));
+      ax.append(el('path', { d: `M${X0 + 60},${B0 + BH + 52} C${X0 + 22},${B0 + BH + 52} ${X0 + 6},${B0 + BH + 42} ${X0 + 4},${B0 + BH + 21}`, class: 'pointer', 'marker-end': 'url(#bk-head)' }));
+      ax.append(el('text', { x: X0 + 64, y: B0 + BH + 56, class: 'note' }, 'oldest point, least past context'));
+      ax.append(el('path', { d: `M${X1 - 60},${B0 + BH + 52} C${X1 - 22},${B0 + BH + 52} ${X1 - 8},${B0 + BH + 42} ${X1 - 8},${B0 + BH + 21}`, class: 'pointer', 'marker-end': 'url(#bk-head)' }));
+      ax.append(el('text', { x: X1 - 64, y: B0 + BH + 56, 'text-anchor': 'end', class: 'note' }, 'newest point, full context'));
+    };
+
+    const render = () => {
+      if (!data) return;
+      const k = Number(range.value);
+      const s = data.sweep[k], q = s.q;
+      range.setAttribute('aria-valuetext', `Q = ${q}`);
+      // bands
+      q$<SVGPathElement>('.top').setAttribute('d', stipple(s.bins, X0, W, T0, TH, 11));
+      q$<SVGPathElement>('.bot:not(.cut)').setAttribute('d', stipple(data.chunk, X0, W, B0, BH, 23, q, 256));
+      q$<SVGPathElement>('.bot.cut').setAttribute('d', stipple(data.chunk, X0, W, B0, BH, 23, 0, q));
+      q$<SVGRectElement>('.shade').setAttribute('width', String(xQ(q) - X0));
+      // bar: line through the lower band, handle below it, label beside the handle
+      const bar = q$<SVGGElement>('.bar');
+      bar.replaceChildren();
+      const x = q === 0 ? X0 + 1 : xQ(q);
+      bar.append(el('line', { x1: x, x2: x, y1: B0 - 6, y2: B0 + BH + 4, class: 'barline' }));
+      bar.append(el('rect', { x: x - 6, y: B0 - 12, width: 12, height: 12, rx: 3, class: 'barhandle' }));
+      const lx = Math.min(Math.max(x, X0 + 120), X1 - 120);
+      bar.append(el('text', { x: lx, y: B0 + BH + 15, 'text-anchor': 'middle', class: 'barlab' }, q === 0 ? 'Q = 0 · nothing discarded' : `Q = ${q} · discard positions 0–${q - 1}`));
+      // link: bracket over the error-heavy start of the window, arrow to one strip in the trajectory
+      const link = q$<SVGGElement>('.link');
+      link.replaceChildren();
+      const bx0 = X0, bx1 = xQ(HEAVY), by = B0 - 18;
+      link.append(el('path', { d: `M${bx0},${by + 6}V${by}H${bx1}V${by + 6}`, class: q === 0 ? 'brk' : 'brk off' }));
+      if (q === 0) {
+        // the dense strip at the start of the second window (trajectory point ~255)
+        const sx = X0 + (255 / 5000) * W + 2;
+        link.append(el('path', { d: `M${(bx0 + bx1) / 2},${by - 2} C${(bx0 + bx1) / 2},${by - 46} ${sx},${T0 + TH + 46} ${sx},${T0 + TH + 6}`, class: 'pointer strong', 'marker-end': 'url(#bk-head-strong)' }));
+        const tx = X0 + (255 / 5000) * W + 26;
+        link.append(el('text', { x: tx, y: 100, class: 'note strong' }, 'The error-heavy start of each prediction window…'));
+        link.append(el('text', { x: tx, y: 115, class: 'note' }, '…shows up as one of these dense strips, repeating evenly along the trajectory'));
+      } else {
+        link.append(el('text', { x: X1, y: T0 + TH + 16, 'text-anchor': 'end', class: 'note' }, q === 255 ? 'Only the very first point of the trajectory still lacks context' : 'The strips thin out as Q discards the start of each window'));
+      }
+      // readouts
+      const base = data.sweep[0].l1;
+      out('q').textContent = String(q);
+      out('keep').textContent = q === 0 ? 'keep all 256 predictions per window' : `keep ${256 - q} of 256 predictions per window`;
+      out('err').textContent = `${s.l1.toFixed(2)} m`;
+      out('delta').textContent = q === 0 ? 'no head buckle' : `${(((s.l1 - base) / base) * 100).toFixed(1)}% vs Q = 0`;
+      out('pps').textContent = `${s.pps.toLocaleString('en-US')}/s`;
+    };
+
+    // drag along the lower band: snap to the nearest swept Q
+    const setFromPointer = (ev: PointerEvent) => {
+      if (!data) return;
+      const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+      const p = (pt.matrixTransform(svg.getScreenCTM()!.inverse()).x - X0) / cw;
+      let best = 0;
+      data.sweep.forEach((s, i) => { if (Math.abs(s.q - p) < Math.abs(data!.sweep[best].q - p)) best = i; });
+      if (String(best) !== range.value) { range.value = String(best); render(); }
+    };
+    let dragging = false;
+    const hit = q$<SVGRectElement>('.hit');
+    hit.addEventListener('pointerdown', (ev) => { dragging = true; hit.setPointerCapture(ev.pointerId); setFromPointer(ev); });
+    hit.addEventListener('pointermove', (ev) => { if (dragging) setFromPointer(ev); });
+    hit.addEventListener('pointerup', () => { dragging = false; });
+    range.addEventListener('input', render);
+
+    const load = async () => {
+      try {
+        data = await (await fetch(fig.dataset.src!)).json();
+        drawStatic(data!);
+        fig.classList.add('ready');
+        render();
+      } catch { fig.querySelector('.bk-loading')!.textContent = 'Could not load the sweep data.'; }
+    };
+    new IntersectionObserver(([e], obs) => { if (e.isIntersecting) { obs.disconnect(); load(); } }, { rootMargin: '300px' }).observe(fig);
+  });
+</script>
+
+<style>
+  .bk { margin: 1.5rem 0 2rem; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); --dot: #7a2e1c; }
+  :global(:root[data-theme='dark']) .bk { --dot: #f0b48a; }
+  .bk-read { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 6px; }
+  .bk-read > div { display: flex; flex-direction: column; border-top: 1px solid var(--line); padding-top: 6px; }
+  .bk-read .lab { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); font-weight: 600; }
+  .bk-read .val { font-family: var(--font-serif); font-size: 1.3rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .bk-read .sub { font-size: .72rem; color: var(--ink-3); }
+  .bk-stage { position: relative; }
+  .bk-svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; }
+  .bk-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font-size: .85rem; color: var(--ink-3); }
+  .bk.ready .bk-loading { display: none; }
+
+  .bk-svg .cap { font: 600 11px var(--font-sans); fill: var(--ink-2); }
+  .bk-svg .band { fill: var(--bg); stroke: var(--line); stroke-width: 1; }
+  .bk-svg .dots, .bk-svg :global(.dots) { fill: var(--dot); }
+  .bk-svg .dots.cut { opacity: .2; }
+  .bk-svg .shade { fill: var(--ink); opacity: .06; }
+  .bk-svg :global(.keycell) { fill: var(--bg); stroke: var(--line); }
+  .bk-svg :global(.tick) { font: 10.5px var(--font-sans); fill: var(--ink-3); }
+  .bk-svg :global(.tick.end) { font-weight: 600; fill: var(--ink-2); }
+  .bk-svg :global(.note) { font: 10.5px var(--font-sans); fill: var(--ink-3); }
+  .bk-svg :global(.note.strong) { font-weight: 600; fill: var(--ink-2); }
+  .bk-svg :global(.pointer) { fill: none; stroke: var(--ink-3); stroke-width: 1.1; }
+  .bk-svg :global(.pointer.strong) { stroke: var(--accent); stroke-width: 1.6; }
+  .bk-svg .ah { fill: var(--ink-3); }
+  .bk-svg .ah.strong { fill: var(--accent); }
+  .bk-svg :global(.brk) { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+  .bk-svg :global(.brk.off) { stroke: var(--ink-3); opacity: .5; }
+  .bk-svg :global(.barline) { stroke: var(--ctl); stroke-width: 2; }
+  .bk-svg :global(.barhandle) { fill: var(--ctl); }
+  .bk-svg :global(.barlab) { font: 600 11px var(--font-sans); fill: var(--ctl-ink); }
+  .bk-svg .hit { fill: transparent; cursor: ew-resize; }
+  .bk-slider { margin-top: 2px; }
+  .bk-slider input { display: block; width: 100%; margin: 0; accent-color: var(--ctl); cursor: pointer; }
+  figcaption { font-size: .78rem; color: var(--ink-3); margin-top: 8px; }
+  @media (max-width: 560px) {
+    .bk { padding: 12px 10px 10px; }
+    .bk-read .val { font-size: 1.1rem; }
+  }
+</style>

@@ -104,8 +104,9 @@ const data = {
         return;
       }
       // geometry: square-root scale for the span so 2 km and 24 km both fit; noise drawn at a fixed scale
-      const x0 = 60, wMax = 500, yBase = 120;
+      const wMax = 500, yBase = 120;
       const w = Math.max(14, wMax * Math.sqrt(span / maxSpan));
+      const x0 = 320 - w / 2; // keep the window centred in the 640-wide drawing
       const noisePx = 0.75 * noise + 10;
       const clean = shapes[dsKey].map(([fx, dy]) => [x0 + fx * w, yBase + dy]);
       const noisy = clean.map(([x, y], i) => [x + noisePx * Math.cos(angles[i]), y + noisePx * Math.sin(angles[i])]);

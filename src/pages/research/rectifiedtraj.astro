@@ -1,10 +1,11 @@
 ---
 import Base from '../../layouts/Base.astro';
 import ProjectHeader from '../../components/ProjectHeader.astro';
-import Chart from '../../components/Chart.astro';
 import TrajGallery from '../../components/TrajGallery.astro';
 import BenchChart from '../../components/BenchChart.astro';
 import SpanDemo from '../../components/SpanDemo.astro';
+import BuckleDemo from '../../components/BuckleDemo.astro';
+import archSvg from '../../assets/architecture-themed.svg?raw';
 
 // All numbers below are from the published tables in "RectifiedTraj Revisited" (UMFM @ SIGSPATIAL 2026).
 const p95 = [2.36, 6.87, 16.34, 24.35];
@@ -67,15 +68,12 @@ const bwRaw = [[44.63, 43.45, 42.82, 38.52, 36.42]];
 const synthSeries = methods.map((m) => ({ ...m, values: synth[m.key] }));
 const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key === 'residualreg' ? 'not evaluated' : undefined }));
 
-const qs = ['0', '16', '32', '48', '80', '128', '192', '240', '255'];
-const qMean = [3.04, 2.68, 2.55, 2.44, 2.34, 2.24, 2.16, 2.13, 2.12];
-const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
 ---
 <Base title="RectifiedTraj" description="RectifiedTraj: map-free, causal, lightweight GPS trajectory denoising with rectified flow (ACM SIGSPATIAL 2026).">
   <ProjectHeader
     title="RectifiedTraj"
     subtitle="Map-free, causal GPS trajectory denoising that runs on a phone."
-    status="Published · ACM SIGSPATIAL 2026 · Best UMFM Workshop Paper Award"
+    status="Short paper, ACM SIGSPATIAL 2026 main conference · Extended study: full paper, UMFM workshop at SIGSPATIAL 2026, Best UMFM Workshop Paper Award"
     role="First-author lead, USC InfoLab"
     period="Aug 2025 – Sep 2026"
     team="With Shang-Ling Hsu, Chen Chu, Lifeng Lin, Ryosuke Shibasaki, Noboru Koshizuka and Cyrus Shahabi"
@@ -84,7 +82,7 @@ const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
       { label: 'Paper (preprint)', href: 'https://drive.google.com/file/d/1an4LTKb96VXZn7xlh_8YtIfjap4P86ue/view?usp=drivesdk', icon: 'file' },
       { label: 'Extended study (preprint)', href: '/media/rectifiedtraj/rectifiedtraj_revisited_preprint.pdf', icon: 'file' },
       { label: 'Extended-study slides', href: '/media/rectifiedtraj/rectifiedtraj_revisited_slides.pdf', icon: 'download' },
-      { label: 'Best Workshop Paper Award', href: '/media/rectifiedtraj/umfm_best_workshop_paper_award.pdf', icon: 'award' },
+      { label: 'Award (extended study)', href: '/media/rectifiedtraj/umfm_best_workshop_paper_award.pdf', icon: 'award' },
       { label: 'Poster', href: '/media/rectifiedtraj/rectifiedtraj_poster.pdf', icon: 'download' },
       { label: 'Code', href: 'https://github.com/DexinRen/RectifiedTraj', icon: 'code' },
     ]}
@@ -121,8 +119,8 @@ const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
         least context at the start of a chunk, overlapping chunks let us discard those early predictions when reassembling.
       </p>
     </div>
-    <figure class="paper-fig arch">
-      <img src="/media/rectifiedtraj/architecture.svg" alt="Architecture: pointwise embedding and 1D CNN feed a causal Transformer with positional and noise embeddings; an MLP head predicts the velocity." loading="lazy" />
+    <figure class="arch">
+      <Fragment set:html={archSvg} />
       <figcaption>Causal local–global denoising network (from the paper).</figcaption>
     </figure>
   </div>
@@ -224,27 +222,25 @@ const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
   <p>
     Before running any experiment I expected a causal model to make more errors near chunk boundaries, where it lacks context. The point-wise
     error heatmap confirmed this at the start of each chunk for the Transformer-based variants. The CNN-only variant, with its bounded receptive field, does not show the
-    effect. The head buckle discards the first <em>Q</em> predictions of each overlapping chunk, which trades throughput for accuracy:
+    effect. The head buckle discards the first <em>Q</em> predictions of each overlapping chunk, which trades throughput for accuracy.
+    Move the bar to see both effects at once:
   </p>
-  <div class="grid-2">
-    <Chart
-      title="Mean error vs. head-buckle size Q"
-      spec={{ type: 'line', x: qs, series: [{ name: 'RT-Hybrid', values: qMean, slot: 1 }], unit: ' m', decimals: 2, yMin: 2, yMax: 3.2, xLabel: 'Q (discarded points per chunk)', height: 240 }}
-      table={{ head: ['Q', 'Mean error (m)'], rows: qs.map((q, i) => [q, qMean[i].toFixed(2)]) }}
-    />
-    <Chart
-      title="Throughput vs. Q"
-      spec={{ type: 'line', x: qs, series: [{ name: 'RT-Hybrid', values: qThr, slot: 1 }], unit: ' pts/s', decimals: 0, yMin: 0, xLabel: 'Q (discarded points per chunk)', height: 240 }}
-      table={{ head: ['Q', 'Retained predictions / s'], rows: qs.map((q, i) => [q, qThr[i].toLocaleString('en-US')]) }}
-    />
-  </div>
+  <BuckleDemo />
   <p class="small muted">
     Q = 192 cuts mean error from 3.04 m to 2.16 m and p95 error from 8.83 m to 4.56 m, while still keeping about 9.8k predictions/s.
     Last-point error stays at about 2.1 m throughout, so the gain comes from dropping the poorly contextualised start, not from changing the tail.
   </p>
-  <figure class="paper-fig hb">
-    <img src="/media/rectifiedtraj/head_buckle.svg" alt="Overlapping chunks: each chunk's head-buckle region is discarded and the payload predictions are stitched into one trajectory." loading="lazy" />
-    <figcaption>Head-buckle reassembly: overlapping chunks, discarded heads (HB), stitched payloads.</figcaption>
+  <figure class="hb-anim">
+    <!-- one animation per theme; CSS shows the one that matches the site's light / dark theme -->
+    <picture class="theme-light">
+      <source srcset="/media/rectifiedtraj/reassembly_light_static.svg" media="(prefers-reduced-motion: reduce)" />
+      <img src="/media/rectifiedtraj/reassembly_light.gif" width="760" height="300" loading="lazy" alt="Animation: a window made of a head buckle (HB) and a payload sits over the noisy GPS stream, which scrolls past it. The HB covers points that are already cleaned and serves only as context. Each window is denoised in one model step, its HB predictions are dropped, and its payload is stitched onto the clean trajectory." />
+    </picture>
+    <picture class="theme-dark">
+      <source srcset="/media/rectifiedtraj/reassembly_dark_static.svg" media="(prefers-reduced-motion: reduce)" />
+      <img src="/media/rectifiedtraj/reassembly_dark.gif" width="760" height="300" loading="lazy" alt="Animation: a window made of a head buckle (HB) and a payload sits over the noisy GPS stream, which scrolls past it. The HB covers points that are already cleaned and serves only as context. Each window is denoised in one model step, its HB predictions are dropped, and its payload is stitched onto the clean trajectory." />
+    </picture>
+    <figcaption>Head-buckle reassembly on a stream. Each window overlaps the previous one by its head buckle (HB), whose points are already cleaned and serve only as context. The window is denoised in one step, its HB predictions are dropped, and its payload is stitched onto the clean trajectory; the stream then advances by one payload.</figcaption>
   </figure>
 
   <h2>On a phone</h2>
@@ -340,9 +336,19 @@ const qThr = [37832, 35599, 33232, 31078, 26699, 19361, 9769, 3244, 249];
 <style>
   .approach { align-items: start; }
   .approach p { font-size: .97rem; }
-  .arch { margin: 0; }
-  .arch img { max-height: 380px; width: auto; }
-  .hb img { max-width: 420px; width: 100%; }
+  /* the paper's architecture figure, recoloured to follow the site theme (no white panel) */
+  .arch {
+    margin: 0;
+    --arch-ink: var(--ink); --arch-line: var(--ink-2); --arch-box: var(--surface);
+    --arch-blue: color-mix(in srgb, #4f7db8 24%, var(--surface));
+    --arch-red: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  }
+  .arch :global(.arch-svg) { display: block; width: auto; max-width: 100%; max-height: 380px; height: auto; margin: 0 auto; overflow: visible; }
+  .hb-anim { margin: 1.5rem 0 2rem; }
+  .hb-anim img { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+  .hb-anim .theme-dark { display: none; }
+  :global(:root[data-theme='dark']) .hb-anim .theme-light { display: none; }
+  :global(:root[data-theme='dark']) .hb-anim .theme-dark { display: block; }
   .media figure { margin: 0; }
   .poster-link img { border-radius: var(--radius-sm); border: 1px solid var(--line); max-height: 420px; width: auto; margin: 0 auto; }
   .poster-link { display: block; }
