@@ -9,9 +9,27 @@ import { news } from '../data/news';
 import { projects } from '../data/projects';
 
 const selected = pubs.filter((p) => p.selected);
+
+// Structured data so search engines can connect the name "Dexin Ren" to this page.
+const person = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: site.name,
+  url: 'https://dexinren.github.io/',
+  image: 'https://dexinren.github.io/media/portrait.webp',
+  jobTitle: 'Research Assistant',
+  affiliation: { '@type': 'Organization', name: 'USC InfoLab, University of Southern California', url: 'https://infolab.usc.edu/' },
+  alumniOf: [
+    { '@type': 'CollegeOrUniversity', name: 'University of Southern California' },
+    { '@type': 'CollegeOrUniversity', name: 'University of Illinois Urbana-Champaign' },
+  ],
+  knowsAbout: ['Machine learning', 'Distribution shift', 'GPS trajectory denoising', 'Rectified flow'],
+  sameAs: [site.github.href],
+};
 const steps = ['Unexpected result', 'Question the assumptions', 'Competing hypotheses', 'Controlled comparison', 'Failure mode found', 'Redesign data / objective'];
 ---
 <Base>
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(person)} />
   <section class="hero">
     <div class="hero-text">
     <p class="eyebrow">{site.role}</p>
