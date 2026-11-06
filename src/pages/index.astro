@@ -37,8 +37,8 @@ const steps = ['Unexpected result', 'Question the assumptions', 'Competing hypot
     <Portrait src="/media/portrait.webp" alt="Dexin Ren" />
     <p class="lede">
       I study <em>why</em> machine-learning models generalize or fail, focusing on how data distributions,
-      learning objectives, representations and inductive biases interact. I am most interested in settings where the data are limited, shifted,
-      synthetic or otherwise imperfect.
+      learning objectives, representations and inductive biases interact, mostly with geospatial and mobility data and with health data. I am
+      most interested in settings where the data are limited, shifted, synthetic or otherwise imperfect.
     </p>
     <ul class="status-list">
       {site.status.map((t, i) => <li class="status"><span class:list={['dot', { alt: i > 0 }]}></span>{t}</li>)}
@@ -107,6 +107,7 @@ const steps = ['Unexpected result', 'Question the assumptions', 'Competing hypot
       <li><strong>Failure analysis.</strong> Controlled comparisons that separate architecture, objective, representation and training dynamics.</li>
       <li><strong>Learning with difficult data.</strong> Small samples with high dimensionality, heterogeneous subjects, and subgroups that behave differently.</li>
     </ul>
+    <p class="domains"><strong>Domains:</strong> geospatial and mobility data; health data.</p>
 
     <figure class="flow" aria-label="My research loop">
       <ol>
@@ -167,6 +168,8 @@ const steps = ['Unexpected result', 'Question the assumptions', 'Competing hypot
   .interests li { padding: .5rem 0 .5rem 1.1rem; position: relative; color: var(--ink-2); }
   .interests li::before { content: ''; position: absolute; left: 0; top: 1.05em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
   .interests strong { color: var(--ink); font-weight: 600; }
+  .domains { margin: .25rem 0 0; color: var(--ink-2); }
+  .domains strong { color: var(--ink); font-weight: 600; }
 
   .flow { margin: 1.75rem 0 0; }
   .flow ol { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; counter-reset: s; }
