@@ -1,0 +1,422 @@
+---
+// Interactive benchmark chart for RectifiedTraj (static SVG + a little JS for the legend).
+// - One or more side-by-side panels sharing a y axis (e.g. NUMOSIM | PoL).
+// - The raw-GPS line splits each panel into a "better than raw" region (green) and a "worse than raw" region (red).
+// - RectifiedTraj family: solid lines; every other method: dotted. Each method has its own marker shape.
+// - Legend on the right with a checkbox per method; unchecking hides that method's line.
+// - Regime brackets under the x axis (trained / few-shot / zero-shot) and an optional "trained here" callout.
+interface Panel {
+  title: string;
+  xs: string[];
+  regimes?: { from: number; to: number; label: string; kind: 'train' | 'few' | 'zero' }[];
+  trainedAt?: number; // index of the x tick the models were trained on: circled, with an arrow to a note
+}
+interface Series { key: string; label: string; rt?: boolean; values: (number | null)[][]; note?: string }
+interface Props {
+  id: string;
+  title: string;
+  subtitle?: string;
+  panels: Panel[];
+  raw: number[][];
+  series: Series[];
+  scale: 'log' | 'linear';
+  domain: [number, number];
+  ticks: number[];
+  yLabel: string;
+  xLabel?: string;
+  unit: string;          // appended to values in tooltips, e.g. ' m' or '%'
+  better: 'lower' | 'higher';
+  caption?: string;
+  source?: string;
+}
+const { id, title, subtitle, panels, raw, series, scale, domain, ticks, yLabel, xLabel, unit, better, caption, source } = Astro.props;
+
+// ---- geometry (SVG user units; the SVG scales to its container)
+const W = 680, H = 440;
+const M = { l: 58, r: 58, t: 34, b: 104 };
+const gap = 26;
+const innerW = W - M.l - M.r;
+const totalPts = panels.reduce((s, p) => s + p.xs.length, 0);
+const avail = innerW - gap * (panels.length - 1);
+let cursor = M.l;
+const boxes = panels.map((p) => {
+  const w = (avail * p.xs.length) / totalPts;
+  const b = { x0: cursor, x1: cursor + w };
+  cursor += w + gap;
+  return b;
+});
+const pad = 16; // keep first/last point off the panel edges
+const xAt = (pi: number, i: number) => {
+  const { x0, x1 } = boxes[pi];
+  const n = panels[pi].xs.length;
+  return n === 1 ? (x0 + x1) / 2 : x0 + pad + ((x1 - x0 - 2 * pad) * i) / (n - 1);
+};
+const y0 = M.t, y1 = H - M.b; // plot top / bottom
+const [d0, d1] = domain;
+const t = (v: number) => (scale === 'log' ? Math.log10(v) : v);
+const yAt = (v: number) => {
+  const c = Math.max(d0, Math.min(d1, v));
+  return y1 - ((t(c) - t(d0)) / (t(d1) - t(d0))) * (y1 - y0);
+};
+const f = (n: number) => n.toFixed(1);
+const fmtTick = (v: number) => (v >= 1000 ? `${v / 1000}k` : String(v));
+const fmtVal = (v: number) => (unit === '%' ? `${v.toFixed(2)}%` : `${v.toFixed(2)}${unit}`);
+
+// ---- marker shapes (centered at 0,0)
+const shapes = ['circle', 'square', 'tri', 'diamond', 'tridown', 'star', 'pent', 'ocircle', 'osquare', 'otri', 'x', 'plus', 'odiamond', 'hex'];
+const marker = (shape: string, r = 4.2) => {
+  const poly = (n: number, rot: number, rr = r) =>
+    Array.from({ length: n }, (_, k) => {
+      const a = rot + (2 * Math.PI * k) / n;
+      return `${f(rr * Math.cos(a))},${f(rr * Math.sin(a))}`;
+    }).join(' ');
+  switch (shape) {
+    case 'circle': return `<circle r="${r}" class="mk"/>`;
+    case 'ocircle': return `<circle r="${r}" class="mk o"/>`;
+    case 'square': return `<rect x="${-r * 0.9}" y="${-r * 0.9}" width="${r * 1.8}" height="${r * 1.8}" class="mk"/>`;
+    case 'osquare': return `<rect x="${-r * 0.85}" y="${-r * 0.85}" width="${r * 1.7}" height="${r * 1.7}" class="mk o"/>`;
+    case 'tri': return `<polygon points="${poly(3, -Math.PI / 2, r * 1.15)}" class="mk"/>`;
+    case 'otri': return `<polygon points="${poly(3, -Math.PI / 2, r * 1.15)}" class="mk o"/>`;
+    case 'tridown': return `<polygon points="${poly(3, Math.PI / 2, r * 1.15)}" class="mk"/>`;
+    case 'diamond': return `<polygon points="${poly(4, 0, r * 1.15)}" class="mk"/>`;
+    case 'odiamond': return `<polygon points="${poly(4, 0, r * 1.15)}" class="mk o"/>`;
+    case 'pent': return `<polygon points="${poly(5, -Math.PI / 2, r * 1.1)}" class="mk"/>`;
+    case 'hex': return `<polygon points="${poly(6, 0, r * 1.05)}" class="mk o"/>`;
+    case 'star': {
+      const pts = Array.from({ length: 10 }, (_, k) => {
+        const rr = k % 2 ? r * 0.5 : r * 1.3, a = -Math.PI / 2 + (Math.PI * k) / 5;
+        return `${f(rr * Math.cos(a))},${f(rr * Math.sin(a))}`;
+      }).join(' ');
+      return `<polygon points="${pts}" class="mk"/>`;
+    }
+    case 'x': return `<path d="M${-r},${-r}L${r},${r}M${-r},${r}L${r},${-r}" class="mk s"/>`;
+    case 'plus': return `<path d="M0,${-r * 1.2}V${r * 1.2}M${-r * 1.2},0H${r * 1.2}" class="mk s"/>`;
+    default: return `<circle r="${r}" class="mk"/>`;
+  }
+};
+const styled = series.map((s, i) => ({ ...s, shape: shapes[i % shapes.length] }));
+
+// ---- regions: area between the raw line and the bottom / top of each panel
+const regions = panels.map((p, pi) => {
+  const { x0, x1 } = boxes[pi];
+  const r = raw[pi];
+  const line = [`${f(x0)},${f(yAt(r[0]))}`, ...r.map((v, i) => `${f(xAt(pi, i))},${f(yAt(v))}`), `${f(x1)},${f(yAt(r[r.length - 1]))}`];
+  const below = [...line, `${f(x1)},${f(y1)}`, `${f(x0)},${f(y1)}`].join(' ');
+  const above = [...line, `${f(x1)},${f(y0)}`, `${f(x0)},${f(y0)}`].join(' ');
+  const good = better === 'lower' ? below : above;
+  const bad = better === 'lower' ? above : below;
+  return { good, bad, line: line.join(' ') };
+});
+
+// ---- series paths; a null value breaks the line
+const paths = styled.map((s) => {
+  const segs: string[] = [];
+  const pts: { x: number; y: number; v: number; pi: number; i: number }[] = [];
+  s.values.forEach((vals, pi) => {
+    let d = '';
+    vals.forEach((v, i) => {
+      if (v == null) { if (d) segs.push(d); d = ''; return; }
+      const x = xAt(pi, i), y = yAt(v);
+      d += `${d ? 'L' : 'M'}${f(x)},${f(y)}`;
+      pts.push({ x, y, v, pi, i });
+    });
+    if (d) segs.push(d);
+  });
+  return { ...s, d: segs.join(''), pts };
+});
+
+const regimeY = y1 + 40;
+const lastRaw = raw[raw.length - 1][raw[raw.length - 1].length - 1];
+// corner labels for the shaded regions: worse-than-raw and better-than-raw
+const corner = (pos: string) => {
+  const right = pos.endsWith('r');
+  const box = right ? boxes[boxes.length - 1] : boxes[0];
+  return { x: right ? box.x1 - 8 : box.x0 + 8, y: pos.startsWith('t') ? y0 + 16 : y1 - 9, anchor: right ? 'end' : 'start' };
+};
+const pos = better === 'lower' ? { good: 'br', bad: 'tr' } : { good: 'tr', bad: 'bl' };
+const regionLabels = [
+  { ...corner(pos.good), kind: 'good', text: better === 'lower' ? '▼ lower error than raw GPS' : '▲ more accurate than raw GPS' },
+  { ...corner(pos.bad), kind: 'bad', text: better === 'lower' ? '▲ higher error than raw GPS' : '▼ less accurate than raw GPS' },
+];
+const legendData = styled.map((s) => ({ key: s.key, rt: !!s.rt, shape: s.shape, available: s.values.some((p) => p.some((v) => v != null)) }));
+const tableHead = ['Method', ...panels.flatMap((p) => p.xs.map((x) => (panels.length > 1 ? `${p.title.split(' ')[0]} ${x}` : x)))];
+const tableRows = [
+  ['Raw GPS', ...raw.flat().map((v) => fmtVal(v))],
+  ...series.map((s) => [s.label, ...s.values.flat().map((v) => (v == null ? 'N/A' : fmtVal(v)))]),
+];
+---
+<figure class="bench" id={id} data-bench>
+  <div class="bhead">
+    <figcaption class="bt">
+      <strong>{title}</strong>
+      {subtitle && <span>{subtitle}</span>}
+    </figcaption>
+    <div class="lbtns" role="group" aria-label="Quick selection">
+      <button type="button" data-set="all">All</button>
+      <button type="button" data-set="rt">RectifiedTraj only</button>
+      <button type="button" data-set="none">None</button>
+    </div>
+  </div>
+  <div class="bwrap">
+    <div class="bscroll">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby={`${id}-desc`}>
+        <desc id={`${id}-desc`}>{title}. {subtitle} Full numbers are in the table below the chart.</desc>
+        <defs>
+          <marker id={`${id}-arrow`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0L10,5L0,10z" class="arrowhead" />
+          </marker>
+          <clipPath id={`${id}-clip`}><rect x={M.l} y={y0 - 6} width={innerW} height={y1 - y0 + 12} /></clipPath>
+        </defs>
+
+        <!-- better / worse regions and the raw-GPS line -->
+        {regions.map((r) => (
+          <g>
+            <polygon points={r.good} class="rg good" />
+            <polygon points={r.bad} class="rg bad" />
+          </g>
+        ))}
+
+        <!-- y grid + ticks -->
+        {ticks.map((v) => (
+          <g>
+            <line x1={M.l} x2={W - M.r} y1={yAt(v)} y2={yAt(v)} class="grid" />
+            <text x={M.l - 8} y={yAt(v) + 3.5} class="tick" text-anchor="end">{fmtTick(v)}</text>
+          </g>
+        ))}
+        {xLabel && <text x={W - M.r} y={H - 8} class="ylab" text-anchor="end">{xLabel}</text>}
+        <text x={14} y={(y0 + y1) / 2} class="ylab" text-anchor="middle" transform={`rotate(-90 14 ${(y0 + y1) / 2})`}>{yLabel}</text>
+
+        <!-- panel frames, titles, x ticks -->
+        {panels.map((p, pi) => (
+          <g>
+            <rect x={boxes[pi].x0} y={y0} width={boxes[pi].x1 - boxes[pi].x0} height={y1 - y0} class="frame" />
+            <text x={(boxes[pi].x0 + boxes[pi].x1) / 2} y={y0 - 10} class="ptitle" text-anchor="middle">{p.title}</text>
+            {p.xs.map((x, i) => (
+              <g>
+                <line x1={xAt(pi, i)} x2={xAt(pi, i)} y1={y1} y2={y1 + 5} class="axis" />
+                <text x={xAt(pi, i)} y={y1 + 18} class="tick" text-anchor="middle">{x}</text>
+              </g>
+            ))}
+            {(p.regimes ?? []).map((g) => {
+              const a = xAt(pi, g.from) - (g.from === g.to ? 18 : 10), b = xAt(pi, g.to) + (g.from === g.to ? 18 : 10);
+              return (
+                <g class={`regime ${g.kind}`}>
+                  <path d={`M${f(a)},${regimeY - 6}V${regimeY}H${f(b)}V${regimeY - 6}`} class="bracket" />
+                  <text x={(a + b) / 2} y={regimeY + 14} text-anchor="middle" class="rlab">{g.label}</text>
+                </g>
+              );
+            })}
+            {p.trainedAt != null && (
+              <g class="trained">
+                <ellipse cx={xAt(pi, p.trainedAt)} cy={y1 + 14} rx="17" ry="11" class="ring" />
+                <path
+                  d={`M${f(xAt(pi, p.trainedAt) - 12)},${y1 + 24} Q${f(xAt(pi, p.trainedAt) - 30)},${y1 + 52} ${f(xAt(pi, p.trainedAt) - 4)},${y1 + 74}`}
+                  class="arrow" marker-end={`url(#${id}-arrow)`}
+                />
+                <text x={xAt(pi, p.trainedAt) + 2} y={y1 + 80} class="tnote">models trained only here</text>
+              </g>
+            )}
+          </g>
+        ))}
+
+        <!-- raw GPS reference line, labelled at its right end -->
+        {regions.map((r) => <polyline points={r.line} class="rawline" />)}
+        <text x={boxes[boxes.length - 1].x1 + 5} y={yAt(lastRaw) + 3.5} class="rawlab">Raw</text>
+        <text x={boxes[boxes.length - 1].x1 + 5} y={yAt(lastRaw) + 15} class="rawlab">GPS</text>
+
+        <!-- what the shaded regions mean, written inside them -->
+        {regionLabels.map((l) => <text x={l.x} y={l.y} text-anchor={l.anchor} class:list={['rlbl', l.kind]}>{l.text}</text>)}
+
+        <!-- series -->
+        <g clip-path={`url(#${id}-clip)`}>
+          {paths.map((s) => (
+            <g class:list={['s', { rt: s.rt }]} data-k={s.key} style={`--c: var(--m-${s.key})`}>
+              <path d={s.d} class="ln" />
+              {s.pts.map((p) => (
+                <g transform={`translate(${f(p.x)} ${f(p.y)})`} class="pt">
+                  <title>{`${s.label} · ${panels[p.pi].title} ${panels[p.pi].xs[p.i]}: ${fmtVal(p.v)}`}</title>
+                  <Fragment set:html={marker(s.shape, s.rt ? 4.6 : 4)} />
+                </g>
+              ))}
+            </g>
+          ))}
+        </g>
+      </svg>
+    </div>
+
+    <div class="legend" role="group" aria-label="Methods shown">
+      <div class="lin">
+        {[
+          { head: 'RectifiedTraj · solid', items: legendData.map((d, i) => ({ ...d, i })).filter((d) => d.rt) },
+          { head: 'Baselines · dotted', items: legendData.map((d, i) => ({ ...d, i })).filter((d) => !d.rt) },
+        ].map((grp) => (
+          <>
+            <p class="lhead">{grp.head}</p>
+            <ul>
+              {grp.items.map((s) => (
+                <li class:list={[{ rt: s.rt, na: !s.available }]} style={`--c: var(--m-${s.key})`} data-k={s.key}>
+                  <label title={s.available ? 'Show or hide this method' : series[s.i].note}>
+                    <input type="checkbox" checked={s.available} disabled={!s.available} value={s.key} />
+                    <svg viewBox="-12 -6 24 12" class="bsw" aria-hidden="true">
+                      <line x1="-11" x2="11" y1="0" y2="0" class="ln" />
+                      <Fragment set:html={marker(s.shape, s.rt ? 4 : 3.5)} />
+                    </svg>
+                    <span>{series[s.i].label}{series[s.i].note && <em> (n/a)</em>}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </>
+        ))}
+        <p class="lhint">Untick to hide a line · hover a point for its value</p>
+      </div>
+    </div>
+  </div>
+  {caption && <p class="bcap">{caption}</p>}
+  <details class="bdata">
+    <summary>Show the numbers</summary>
+    <div class="tscroll">
+      <table>
+        <thead><tr>{tableHead.map((h) => <th>{h}</th>)}</tr></thead>
+        <tbody>{tableRows.map((r) => <tr>{r.map((c, j) => (j === 0 ? <th scope="row">{c}</th> : <td>{c}</td>))}</tr>)}</tbody>
+      </table>
+    </div>
+    {source && <p class="bsrc">Source: {source}</p>}
+  </details>
+</figure>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-bench]').forEach((fig) => {
+    const boxes = Array.from(fig.querySelectorAll<HTMLInputElement>('.legend input[type=checkbox]:not(:disabled)'));
+    const groups = new Map(Array.from(fig.querySelectorAll<SVGGElement>('svg g.s')).map((g) => [g.dataset.k!, g]));
+    const svg = fig.querySelector('svg')!;
+    const sync = () => {
+      boxes.forEach((b) => groups.get(b.value)?.classList.toggle('off', !b.checked));
+      svg.classList.remove('focus');
+      groups.forEach((g) => g.classList.remove('hl'));
+    };
+    boxes.forEach((b) => b.addEventListener('change', sync));
+    fig.querySelectorAll<HTMLButtonElement>('.lbtns button').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.set;
+        boxes.forEach((b) => {
+          const rt = b.closest('li')!.classList.contains('rt');
+          b.checked = mode === 'all' ? true : mode === 'rt' ? rt : false;
+        });
+        sync();
+      }),
+    );
+    // hovering a legend entry highlights its line
+    fig.querySelectorAll<HTMLElement>('.legend li[data-k]').forEach((li) => {
+      const g = groups.get(li.dataset.k!);
+      if (!g) return;
+      li.addEventListener('mouseenter', () => { if (g.classList.contains('off')) return; svg.classList.add('focus'); g.classList.add('hl'); });
+      li.addEventListener('mouseleave', () => { svg.classList.remove('focus'); g.classList.remove('hl'); });
+    });
+  });
+</script>
+
+<style>
+  .bench {
+    margin: 1.5rem 0 2.25rem;
+    /* method colours: RectifiedTraj family warm, everything else cooler or neutral */
+    --m-rt-hybrid: #b4532a; --m-rt-trans: #c98a12; --m-rt-cnn: #a2304a;
+    --m-residualreg: #1f7a6d; --m-directreg: #3b5bb5; --m-ddim: #6b4fa0; --m-causal-mlp: #2f7d32;
+    --m-kalman: #4a5d50; --m-kalman-rts: #4f7898; --m-alpha-beta: #8a6d3b; --m-causal-hampel: #9c4f7a;
+    --m-hampel: #6d6d6d; --m-savgol: #0f87a2; --m-valhalla: #5c4033;
+    --raw: #6e6253; --good: #2f8f4e; --bad: #c0392b;
+  }
+  :global(:root[data-theme='dark']) .bench {
+    --m-rt-hybrid: #e08a5c; --m-rt-trans: #e6aa3a; --m-rt-cnn: #e0707f;
+    --m-residualreg: #46b8a6; --m-directreg: #8098ea; --m-ddim: #ab8fe2; --m-causal-mlp: #73c477;
+    --m-kalman: #9db8a4; --m-kalman-rts: #8db4d4; --m-alpha-beta: #cfa86c; --m-causal-hampel: #d78db6;
+    --m-hampel: #b3b3b3; --m-savgol: #4fc4dd; --m-valhalla: #c7a792;
+    --raw: #b8ab99; --good: #4fbf72; --bad: #e0675a;
+  }
+  .bhead { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 10px; }
+  .bt { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+  .bt strong { font-family: var(--font-serif); font-weight: 500; font-size: 1.08rem; color: var(--ink); }
+  .bt span { font-size: .82rem; color: var(--ink-3); }
+  .bwrap { display: grid; grid-template-columns: minmax(0, 1fr) 172px; gap: 12px; align-items: stretch; }
+  .bscroll { overflow-x: auto; }
+  .bscroll svg { display: block; width: 100%; min-width: 540px; height: auto; }
+
+  svg .rg { stroke: none; }
+  svg .rg.good { fill: var(--good); opacity: .13; }
+  svg .rg.bad { fill: var(--bad); opacity: .11; }
+  svg .grid { stroke: var(--line); stroke-width: 1; }
+  svg .frame { fill: none; stroke: var(--line-strong); stroke-width: 1; }
+  svg .axis { stroke: var(--line-strong); }
+  svg .tick { font: 11px var(--font-sans); fill: var(--ink-3); }
+  svg .ylab { font: 11px var(--font-sans); fill: var(--ink-3); }
+  svg .ptitle { font: 600 12px var(--font-sans); fill: var(--ink-2); }
+  svg .rawline { fill: none; stroke: var(--raw); stroke-width: 2.2; stroke-dasharray: 7 4; }
+  svg .rawlab { font: 600 10.5px var(--font-sans); fill: var(--raw); }
+  svg .rlbl { font: 600 10px var(--font-sans); letter-spacing: .02em; }
+  svg .rlbl.good { fill: var(--good); }
+  svg .rlbl.bad { fill: var(--bad); }
+
+  svg .s .ln { fill: none; stroke: var(--c); stroke-width: 1.6; stroke-dasharray: 1.5 4; stroke-linecap: round; stroke-linejoin: round; }
+  svg .s.rt .ln { stroke-width: 2.6; stroke-dasharray: none; }
+  svg .s[data-k='rt-hybrid'] .ln { stroke-width: 3.2; }
+  svg :global(.mk) { fill: var(--c); stroke: var(--c); stroke-width: 1.2; }
+  svg :global(.mk.o) { fill: var(--surface); stroke-width: 1.6; }
+  svg :global(.mk.s) { fill: none; stroke-width: 1.8; stroke-linecap: round; }
+  svg .s { transition: opacity .15s; }
+  svg .s.off { display: none; }
+  svg.focus .s:not(.hl) { opacity: .15; }
+  svg .pt { cursor: default; }
+
+  svg .regime .bracket { fill: none; stroke: var(--ink-3); stroke-width: 1; }
+  svg .regime .rlab { font: 600 10.5px var(--font-sans); fill: var(--ink-3); letter-spacing: .02em; }
+  svg .regime.few .bracket { stroke: var(--m-rt-trans); }
+  svg .regime.few .rlab { fill: var(--m-rt-trans); }
+  svg .regime.zero .bracket { stroke: var(--m-directreg); }
+  svg .regime.zero .rlab { fill: var(--m-directreg); }
+  svg .trained .ring { fill: none; stroke: var(--bad); stroke-width: 1.8; }
+  svg .trained .arrow { fill: none; stroke: var(--bad); stroke-width: 1.5; }
+  svg .trained .tnote { font: 600 10.5px var(--font-sans); fill: var(--bad); }
+  svg .arrowhead { fill: var(--bad); }
+
+  /* the legend never makes the row taller than the chart: it scrolls inside the chart's height */
+  .legend { position: relative; font-size: .74rem; color: var(--ink-2); }
+  .lin { position: absolute; inset: 0; overflow-y: auto; padding-right: 2px; }
+  .lhead { margin: 2px 0 2px; font-size: .66rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .lhead:not(:first-child) { margin-top: 8px; }
+  .lhint { margin: 8px 0 0; font-size: .66rem; color: var(--ink-3); line-height: 1.4; }
+  .lbtns { display: flex; flex-wrap: wrap; gap: 4px; }
+  .lbtns button {
+    font: inherit; font-size: .72rem; padding: 2px 9px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--ctl); background: transparent; color: var(--ctl-ink);
+  }
+  .lbtns button:hover { background: var(--ctl); color: var(--on-ctl); }
+  .legend ul { list-style: none; padding: 0; margin: 0; }
+  .legend li { margin: 0; }
+  .legend label { display: flex; align-items: center; gap: 5px; padding: 1px 0; cursor: pointer; line-height: 1.3; }
+  .legend li.rt label span { font-weight: 600; color: var(--ink); }
+  .legend li.na label { cursor: default; opacity: .5; }
+  .legend input { margin: 0; width: 13px; height: 13px; accent-color: var(--c); flex: none; }
+  .legend em { font-style: normal; color: var(--ink-3); font-weight: 400; }
+  .bsw { width: 24px; height: 12px; flex: none; overflow: visible; }
+  .bsw .ln { stroke: var(--c); stroke-width: 1.6; stroke-dasharray: 1.5 3.5; stroke-linecap: round; }
+  .legend li.rt .bsw .ln { stroke-width: 2.6; stroke-dasharray: none; }
+  .bsw :global(.mk) { fill: var(--c); stroke: var(--c); stroke-width: 1.2; }
+  .bsw :global(.mk.o) { fill: var(--surface); stroke-width: 1.5; }
+  .bsw :global(.mk.s) { fill: none; stroke-width: 1.7; stroke-linecap: round; }
+
+  .bcap { font-size: .82rem; color: var(--ink-3); margin: 10px 0 0; }
+  .bdata { margin-top: 8px; font-size: .78rem; }
+  .bdata summary { cursor: pointer; color: var(--ctl-ink); font-size: .78rem; }
+  .tscroll { overflow-x: auto; margin-top: 8px; }
+  .bdata table { border-collapse: collapse; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bdata th, .bdata td { padding: 3px 8px; border-bottom: 1px solid var(--line); text-align: right; }
+  .bdata th[scope='row'], .bdata thead th:first-child { text-align: left; }
+  .bsrc { color: var(--ink-3); margin: 6px 0 0; }
+
+  @media (max-width: 760px) {
+    .bwrap { grid-template-columns: 1fr; }
+    .lin { position: static; }
+    .legend ul { columns: 2; column-gap: 12px; }
+    .legend li { break-inside: avoid; }
+  }
+</style>

@@ -1,0 +1,218 @@
+---
+// "Why coordinate reconstruction breaks on NUMOSIM but not on PoL": an interactive sketch.
+// Blue = clean trajectory, orange = noisy observations, orange arrows = noise (correction) vectors.
+// The sampling-interval slider stretches the input window by the measured p95 within-chunk distance
+// (RectifiedTraj Revisited, Table 5), while the noise stays at the measured mean raw error (Tables 2–3).
+// Model errors shown underneath are the Mean columns of Tables 2–3.
+const data = {
+  stops: ['5 s', '10 s', '30 s', '1 min', '2 min'],
+  numosim: {
+    span: [null, 2.36, 6.87, 16.34, 24.35],      // km, p95 within-chunk distance
+    noise: [null, 20.22, 19.92, 19.92, 19.95],   // m, mean raw GPS error
+    rt: [null, 3.04, 3.43, 4.17, 4.84],
+    dr: [null, 6.61, 102.84, 283.94, 393.15],
+    ddim: [null, 18.15, 839.56, 2566.16, 3566.32],
+  },
+  pol: {
+    span: [0.0, 2.62, 2.95, 3.43, 3.76],
+    noise: [36.77, 37.24, 37.19, 37.21, 37.23],
+    rt: [24.25, 20.20, 12.44, 10.16, 11.25],
+    dr: [17.74, 18.98, 20.15, 22.46, 30.14],
+    ddim: [22.29, 26.33, 28.89, 32.07, 41.16],
+  },
+};
+---
+<figure class="sd" data-sd>
+  <div class="sd-ctl">
+    <div class="seg" role="radiogroup" aria-label="Training objective">
+      <span class="seg-l">Objective</span>
+      <label><input type="radio" name="sd-obj" value="corr" checked /><span>Predict the correction</span></label>
+      <label><input type="radio" name="sd-obj" value="coord" /><span>Reconstruct coordinates</span></label>
+    </div>
+    <div class="seg" role="radiogroup" aria-label="Dataset">
+      <span class="seg-l">Dataset</span>
+      <label><input type="radio" name="sd-ds" value="numosim" checked /><span>NUMOSIM · always moving</span></label>
+      <label><input type="radio" name="sd-ds" value="pol" /><span>Patterns of Life · dwells at places</span></label>
+    </div>
+  </div>
+
+  <div class="sd-stage">
+    <svg viewBox="0 70 640 170" class="sd-svg" role="img" aria-label="Clean trajectory, noisy observations and noise vectors for the chosen dataset and sampling interval"></svg>
+    <p class="sd-na" hidden>NUMOSIM is not sampled at 5 s (its native interval is 10 s).</p>
+  </div>
+
+  <div class="sd-slider">
+    <input type="range" min="0" max="4" step="1" value="1" aria-label="Sampling interval" />
+    <ol class="sd-ticks" aria-hidden="true">{data.stops.map((s) => <li>{s}</li>)}</ol>
+  </div>
+
+  <dl class="sd-read">
+    <div><dt>Window span (p95)</dt><dd data-r="span">–</dd><span>what coordinate reconstruction must cover</span></div>
+    <div><dt>GPS noise (mean)</dt><dd data-r="noise">–</dd><span>what a correction must cover</span></div>
+    <div><dt>Span ÷ noise</dt><dd data-r="ratio">–</dd><span>coordinate range relative to the noise</span></div>
+    <div class="errs"><dt>Mean error at this interval</dt><dd data-r="errs">–</dd></div>
+  </dl>
+  <figcaption>
+    A 256-point input window, sketched with five points. <span class="k blue"></span>clean trajectory,
+    <span class="k orange"></span>noisy observations, arrows = noise vectors (the correction field points the other way).
+    Spans, noise and errors are measured values from the extended study; the per-step distance is estimated as span ÷ 255.
+    The drawing compresses the span (square-root scale) and draws noise arrows larger than scale so both stay visible.
+  </figcaption>
+  <script type="application/json" class="sd-data" set:html={JSON.stringify(data)} />
+</figure>
+
+<script>
+  type Series = (number | null)[];
+  type DS = { span: Series; noise: Series; rt: Series; dr: Series; ddim: Series };
+  const NS = 'http://www.w3.org/2000/svg';
+  document.querySelectorAll<HTMLElement>('[data-sd]').forEach((fig) => {
+    const data = JSON.parse(fig.querySelector('.sd-data')!.textContent || '{}') as { stops: string[]; numosim: DS; pol: DS };
+    const svg = fig.querySelector('svg')!;
+    const range = fig.querySelector<HTMLInputElement>('input[type=range]')!;
+    const na = fig.querySelector<HTMLElement>('.sd-na')!;
+    const out = (k: string) => fig.querySelector<HTMLElement>(`[data-r="${k}"]`)!;
+    const ticks = Array.from(fig.querySelectorAll<HTMLElement>('.sd-ticks li'));
+    const maxSpan = 24.35;
+    // shape of the window, as fractions of the span (x) plus a gentle vertical wiggle (y, px)
+    const shapes = {
+      numosim: [[0, 0], [0.24, -14], [0.5, 6], [0.76, -10], [1, 4]],          // keeps moving
+      pol: [[0, 0], [0.04, -8], [0.07, 5], [0.55, -12], [1, 2]],              // dwells, then moves on
+    } as Record<string, number[][]>;
+    const angles = [-2.2, 0.9, -0.6, 2.4, -1.4]; // fixed noise directions (radians)
+    const el = (tag: string, attrs: Record<string, string | number>, text?: string) => {
+      const e = document.createElementNS(NS, tag);
+      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+      if (text) e.textContent = text;
+      return e;
+    };
+    const km = (v: number) => (v < 1 ? `${Math.round(v * 1000)} m` : `${v.toFixed(2)} km`);
+    const m = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(2)} km` : `${v.toFixed(v >= 100 ? 0 : 1)} m`);
+
+    const render = () => {
+      const obj = (fig.querySelector<HTMLInputElement>('input[name="sd-obj"]:checked')!).value;
+      const dsKey = (fig.querySelector<HTMLInputElement>('input[name="sd-ds"]:checked')!).value as 'numosim' | 'pol';
+      const ds = data[dsKey];
+      const k = Number(range.value);
+      ticks.forEach((t, j) => t.classList.toggle('on', j === k));
+      svg.replaceChildren();
+      svg.classList.toggle('corr', obj === 'corr');
+      svg.classList.toggle('coord', obj === 'coord');
+      const span = ds.span[k], noise = ds.noise[k];
+      na.hidden = span != null;
+      if (span == null || noise == null) {
+        ['span', 'noise', 'ratio', 'errs'].forEach((r) => (out(r).textContent = '–'));
+        return;
+      }
+      // geometry: square-root scale for the span so 2 km and 24 km both fit; noise drawn at a fixed scale
+      const x0 = 60, wMax = 500, yBase = 120;
+      const w = Math.max(14, wMax * Math.sqrt(span / maxSpan));
+      const noisePx = 0.75 * noise + 10;
+      const clean = shapes[dsKey].map(([fx, dy]) => [x0 + fx * w, yBase + dy]);
+      const noisy = clean.map(([x, y], i) => [x + noisePx * Math.cos(angles[i]), y + noisePx * Math.sin(angles[i])]);
+      const poly = (pts: number[][]) => pts.map((p) => p.map((v) => v.toFixed(1)).join(',')).join(' ');
+
+      const gCoord = el('g', { class: 'coordg' });
+      const gCorr = el('g', { class: 'corrg' });
+      gCoord.append(el('polyline', { points: poly(clean), class: 'cleanline' }));
+      gCorr.append(el('polyline', { points: poly(noisy), class: 'noisyline' }));
+      // span bracket under the window (start to farthest point)
+      const yb = 205;
+      gCoord.append(el('path', { d: `M${x0},${yb - 6}V${yb}H${(x0 + w).toFixed(1)}V${yb - 6}`, class: 'spanbr' }));
+      gCoord.append(el('text', { x: (x0 + w / 2).toFixed(1), y: yb + 16, 'text-anchor': 'middle', class: 'spanlab' }, `window span ${km(span)}`));
+      // per-step distance, estimated as span / 255 for a moving agent (NUMOSIM only)
+      if (dsKey === 'numosim') {
+        const step = (span * 1000) / 255;
+        gCoord.append(el('text', { x: ((clean[1][0] + clean[2][0]) / 2).toFixed(1), y: (Math.min(clean[1][1], clean[2][1]) - 10).toFixed(1), 'text-anchor': 'middle', class: 'steplab' }, `≈${step.toFixed(0)} m / step`));
+      } else {
+        gCoord.append(el('text', { x: (clean[1][0]).toFixed(1), y: (clean[1][1] - 16).toFixed(1), 'text-anchor': 'middle', class: 'steplab' }, 'dwelling at a place'));
+      }
+      clean.forEach(([x, y], i) => {
+        const [nx, ny] = noisy[i];
+        gCorr.append(el('line', { x1: x.toFixed(1), y1: y.toFixed(1), x2: nx.toFixed(1), y2: ny.toFixed(1), class: 'vec', 'marker-end': 'url(#sd-head)' }));
+        if (i === 0 || i === 2 || i === 4) {
+          const lx = (x + nx) / 2 + 13 * Math.sin(angles[i]), ly = (y + ny) / 2 - 13 * Math.cos(angles[i]) + 4;
+          gCorr.append(el('text', { x: lx.toFixed(1), y: ly.toFixed(1), 'text-anchor': 'middle', class: 'veclab' }, `${noise.toFixed(0)} m`));
+        }
+        gCorr.append(el('circle', { cx: nx.toFixed(1), cy: ny.toFixed(1), r: 4.2, class: 'noisypt' }));
+        gCoord.append(el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: 4.6, class: 'cleanpt' }));
+      });
+      const defs = el('defs', {});
+      const mk = el('marker', { id: 'sd-head', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' });
+      mk.append(el('path', { d: 'M0,0L10,5L0,10z', class: 'vechead' }));
+      defs.append(mk);
+      svg.append(defs, gCoord, gCorr);
+      // the chosen objective's target goes on top
+      if (obj === 'coord') svg.append(gCoord);
+
+      out('span').textContent = km(span);
+      out('noise').textContent = m(noise);
+      out('ratio').textContent = span === 0 ? '≈ 0×' : `${Math.round((span * 1000) / noise).toLocaleString('en-US')}×`;
+      out('errs').innerHTML =
+        `<span class="e rt">RT-Hybrid ${m(ds.rt[k]!)}</span>` +
+        `<span class="e dr">DirectReg ${m(ds.dr[k]!)}</span>` +
+        `<span class="e dd">DDIM ${m(ds.ddim[k]!)}</span>`;
+    };
+    fig.querySelectorAll('input').forEach((i) => i.addEventListener('input', render));
+    fig.querySelectorAll('input[type=radio]').forEach((i) => i.addEventListener('change', render));
+    ticks.forEach((t, j) => t.addEventListener('click', () => { range.value = String(j); render(); }));
+    render();
+  });
+</script>
+
+<style>
+  .sd {
+    margin: 1.5rem 0 2rem; padding: 16px 16px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+    --blue: #2f6db5; --orange: #d9822b;
+  }
+  :global(:root[data-theme='dark']) .sd { --blue: #6fa3e6; --orange: #f0a04b; }
+  .sd-ctl { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-bottom: 8px; }
+  .seg { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: .78rem; }
+  .seg-l { color: var(--ink-3); margin-right: 4px; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .seg label { cursor: pointer; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg span:not(.seg-l) { display: inline-block; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink-2); }
+  .seg input:checked + span { background: var(--ctl); border-color: var(--ctl); color: var(--on-ctl); }
+  .seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .sd-stage { position: relative; }
+  .sd-svg { display: block; width: 100%; height: auto; }
+  .sd-na { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font-size: .86rem; color: var(--ink-3); }
+  .sd-na[hidden] { display: none; }
+  .sd-svg :global(.cleanline) { fill: none; stroke: var(--blue); stroke-width: 2.4; stroke-linejoin: round; }
+  .sd-svg :global(.noisyline) { fill: none; stroke: var(--orange); stroke-width: 1.6; stroke-dasharray: 5 4; }
+  .sd-svg :global(.cleanpt) { fill: var(--blue); stroke: var(--surface); stroke-width: 1.5; }
+  .sd-svg :global(.noisypt) { fill: var(--orange); stroke: var(--surface); stroke-width: 1.2; }
+  .sd-svg :global(.vec) { stroke: var(--orange); stroke-width: 2; }
+  .sd-svg :global(.vechead) { fill: var(--orange); }
+  .sd-svg :global(.veclab) { font: 600 10.5px var(--font-sans); fill: var(--orange); }
+  .sd-svg :global(.spanbr) { fill: none; stroke: var(--blue); stroke-width: 1.4; }
+  .sd-svg :global(.spanlab), .sd-svg :global(.steplab) { font: 600 11px var(--font-sans); fill: var(--blue); }
+  .sd-svg :global(.coordg), .sd-svg :global(.corrg) { transition: opacity .25s; }
+  .sd-svg.corr :global(.coordg) { opacity: .22; }
+  .sd-svg.coord :global(.corrg) { opacity: .22; }
+
+  .sd-slider { margin: 4px 0 0; }
+  .sd-slider input { display: block; width: 100%; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .sd-ticks { list-style: none; padding: 0; margin: 2px 0 0; display: flex; justify-content: space-between; font-size: .72rem; color: var(--ink-3); }
+  .sd-ticks li { margin: 0; cursor: pointer; width: 3.2em; text-align: center; }
+  .sd-ticks li:first-child { text-align: left; }
+  .sd-ticks li:last-child { text-align: right; }
+  .sd-ticks li.on { color: var(--accent-ink); font-weight: 600; }
+
+  .sd-read { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.4fr); gap: 10px; margin: 14px 0 6px; }
+  .sd-read > div { border-top: 1px solid var(--line); padding-top: 6px; }
+  .sd-read dt { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); font-weight: 600; }
+  .sd-read dd { margin: 2px 0 0; font-family: var(--font-serif); font-size: 1.25rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .sd-read > div > span { display: block; font-size: .7rem; color: var(--ink-3); line-height: 1.3; }
+  .sd-read .errs dd { font-family: var(--font-sans); font-size: .8rem; display: flex; flex-direction: column; gap: 1px; }
+  .sd-read :global(.e.rt) { color: var(--accent-ink); font-weight: 600; }
+  .sd-read :global(.e.dr), .sd-read :global(.e.dd) { color: var(--ink-2); }
+  figcaption { font-size: .78rem; color: var(--ink-3); margin-top: 6px; }
+  figcaption .k { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px -1px 0; }
+  figcaption .k.blue { background: var(--blue); }
+  figcaption .k.orange { background: var(--orange); }
+  @media (max-width: 640px) {
+    .sd { padding: 12px 10px 10px; }
+    .sd-read { grid-template-columns: 1fr 1fr; }
+  }
+</style>
