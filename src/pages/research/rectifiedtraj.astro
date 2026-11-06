@@ -102,34 +102,67 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     and <strong>lightweight</strong> (fast on old phone CPUs).
   </p>
 
-  <h2>Approach</h2>
+  <h2>How it works</h2>
+
+  <h3>One-step correction with rectified flow</h3>
+  <p>
+    Rather than predicting clean coordinates, the model predicts a <em>correction</em> for every point: the velocity field that carries the
+    noisy trajectory straight to the clean one. Rectified flow makes that path straight, so a single forward pass applies the whole
+    correction, where diffusion needs hundreds of steps.
+  </p>
+
+  <h3>A causal Hybrid network</h3>
   <div class="grid-2 approach">
     <div>
       <p>
-        <strong>Rectified flow for one-step correction.</strong> Instead of iterating like diffusion, the model learns a straight-line
-        velocity field from noisy to clean trajectories, so one forward pass gives the correction.
+        Denoising a single GPS point on its own is nearly impossible: a fix that is 15 m off looks exactly like a real 15 m step. What
+        separates noise from movement is history. Real motion is smooth and consistent: a car keeps its heading and speed, a pedestrian
+        turns at a corner. Noise jumps around without that structure.
       </p>
       <p>
-        <strong>Hybrid local–global network.</strong> A 1-D CNN extracts local motion features and a causal Transformer adds
-        longer preceding context. Comparing CNN-only, Transformer-only and hybrid variants doubles as an ablation of which
-        context matters.
-      </p>
-      <p>
-        <strong>Chunking with a “head buckle”.</strong> Trajectories are processed in fixed 256-point chunks. Because a causal model has the
-        least context at the start of a chunk, overlapping chunks let us discard those early predictions when reassembling.
+        The network therefore reads each point together with the points before it, at two scales. A causal 1-D CNN looks at short stretches
+        of the recent past and picks up local motion: speed, heading, turns. A causal Transformer then attends over the whole preceding window
+        for longer-range context. Neither ever sees a future point, so the model can run on a live stream. CNN-only and Transformer-only
+        versions of the same network double as an ablation of which kind of context matters.
       </p>
     </div>
     <figure class="arch">
       <Fragment set:html={archSvg} />
-      <figcaption>Causal Hybrid architecture (from the papers). The CNN extracts local movement patterns; its features join the input-chunk embedding before the causal Transformer, and a pointwise linear projection outputs each point's rectified-flow velocity.</figcaption>
+      <figcaption>Causal Hybrid architecture, as in both papers. <em>τ</em> indicates the noise level of the input <em>X<sub>τ</sub></em>.</figcaption>
     </figure>
   </div>
 
-  <h2>What it looks like</h2>
+  <h3>Streaming in overlapping windows</h3>
   <p>
-    Every method below sees the same noisy trajectories from central Tokyo. In the extended study I compared fourteen of them, from
-    classical filters to diffusion. Ground truth stays on the left; drag the slider to change the method on the right. Methods are
-    ordered from lowest to highest error, and line width encodes each trajectory's error, so the street map gets
+    A phone receives GPS points one after another, so the model works on fixed 256-point windows that slide along the stream. A causal model
+    knows least at the start of each window, where it has seen the fewest earlier points. Consecutive windows therefore overlap by a
+    <em>head buckle</em> (HB) of <em>Q</em> points: those points are already cleaned and serve only as context, their new predictions are
+    dropped, and the rest of the window, the payload, is stitched onto the clean trajectory.
+  </p>
+  <figure class="hb-anim">
+    <!-- one animation per theme; CSS shows the one that matches the site's light / dark theme -->
+    <picture class="theme-light">
+      <source srcset="/media/rectifiedtraj/reassembly_light_static.svg" media="(prefers-reduced-motion: reduce)" />
+      <img src="/media/rectifiedtraj/reassembly_light.gif" width="760" height="300" loading="lazy" alt="Animation: a window made of a head buckle (HB) and a payload sits over the noisy GPS stream, which scrolls past it. The HB covers points that are already cleaned and serves only as context. Each window is denoised in one model step, its HB predictions are dropped, and its payload is stitched onto the clean trajectory." />
+    </picture>
+    <picture class="theme-dark">
+      <source srcset="/media/rectifiedtraj/reassembly_dark_static.svg" media="(prefers-reduced-motion: reduce)" />
+      <img src="/media/rectifiedtraj/reassembly_dark.gif" width="760" height="300" loading="lazy" alt="Animation: a window made of a head buckle (HB) and a payload sits over the noisy GPS stream, which scrolls past it. The HB covers points that are already cleaned and serves only as context. Each window is denoised in one model step, its HB predictions are dropped, and its payload is stitched onto the clean trajectory." />
+    </picture>
+    <figcaption>Head-buckle reassembly on a stream. Each window overlaps the previous one by its head buckle (HB), whose points are already cleaned and serve only as context. The window is denoised in one step, its HB predictions are dropped, and its payload is stitched onto the clean trajectory; the stream then advances by one payload.</figcaption>
+  </figure>
+
+  <h2>Results</h2>
+  <p>
+    Every model is trained only on NUMOSIM-Kanto at its native 10 s sampling interval. Longer NUMOSIM intervals test few-shot transfer,
+    Patterns of Life tests zero-shot transfer to a different simulator and noise type, and BlogWatcher tests zero-shot transfer to real phones.
+    The extended study compares fourteen methods, from classical filters and map matching to regression baselines and diffusion.
+  </p>
+
+  <h3>What the denoised trajectories look like</h3>
+  <p>
+    All methods see the same noisy trajectories from central Tokyo. Ground truth stays on the left; drag the slider to change the method on the
+    right. Methods are ordered from lowest to highest error, and line width encodes each trajectory's error, so the street map gets
     progressively smeared as you slide right.
   </p>
   <TrajGallery
@@ -154,28 +187,11 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     caption="NUMOSIM-Kanto city-centre subset near the Imperial Palace, Tokyo, from the extended study's qualitative figure. Slider stops are ordered from lowest to highest mean error at the native 10 s interval (full test set). Each trajectory's line width encodes its average error, so thinner is better."
   />
 
-  <h2>The finding I care most about</h2>
+  <h3>Synthetic benchmarks: NUMOSIM and Patterns of Life</h3>
   <p>
-    The large experiment grid turned up something odd. DirectReg and DDIM produced <em>huge error spikes</em> on NUMOSIM once the data were
-    downsampled, yet stayed stable on Patterns of Life, a dataset they had never seen, with a different simulator and noise type.
-    ResidualReg and RectifiedTraj stayed stable on both. All four share the same Hybrid backbone, so the architecture is not the explanation.
+    RectifiedTraj and the residual-regression baseline stay low at every interval on both datasets. DirectReg and DDIM spike on NUMOSIM as the
+    interval grows but not on Patterns of Life; <a href="#window-span">the next section</a> explains why.
   </p>
-  <p>
-    The cause is the <strong>span of the input window</strong>. NUMOSIM agents are always moving, so downsampling makes the distance from
-    the first point of a 256-point window to its farthest point grow sharply: the p95 span goes from <strong>{p95[0]} km at 10 s to
-    {p95[3]} km at 2 min</strong>. Any model that reconstructs the clean coordinates, directly (DirectReg) or indirectly through a denoising
-    process (DDIM), must then output positions far outside the range it was trained on, which is a large out-of-distribution error. A
-    correction-field model predicts only the <em>direction and magnitude</em> of each point's error (its velocity or correction field), so
-    the absolute position drops out of the objective, and the GPS error itself stays near 20 m at every interval.
-  </p>
-  <p>
-    Patterns of Life simulates how people actually behave: they arrive at a place, stay there for a while, and their GPS points stay in a
-    small area. Downsampling barely changes the window span there (its p95 never exceeds 3.76 km), which is why DirectReg and DDIM stay
-    stable on it. Try both objectives and both datasets below.
-  </p>
-
-  <SpanDemo />
-
   <BenchChart
     id="bench-synth"
     title="Synthetic benchmark: mean error vs. sampling interval"
@@ -192,13 +208,7 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     source="RectifiedTraj Revisited, Tables 2 and 3 (Mean columns)."
   />
 
-  <div class="callout">
-    <strong>An honest result:</strong> a same-backbone <em>residual-regression</em> baseline performs about as well as RectifiedTraj. Most of the
-    stability comes from <em>predicting the correction</em>, not from rectified-flow training as such. I reported this in the extended study
-    because it changes what the method's real contribution is.
-  </div>
-
-  <h2>Real-world accuracy</h2>
+  <h3>Real-world benchmark: BlogWatcher</h3>
   <p>
     BlogWatcher is a non-public, real mobile dataset with a reference radius instead of exact ground truth. A point counts as accurate if it
     falls inside its radius. Raw GPS already scores 44.63%, so any method below the raw line makes the data <em>worse</em>. Several classical filters do.
@@ -218,32 +228,18 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     source="RectifiedTraj Revisited, Table 4."
   />
 
-  <h2>Fixing the start of each chunk</h2>
+  <h3>The start of each window</h3>
   <p>
-    Before running any experiment I expected a causal model to make more errors near chunk boundaries, where it lacks context. The point-wise
-    error heatmap confirmed this at the start of each chunk for the Transformer-based variants. The CNN-only variant, with its bounded receptive field, does not show the
-    effect. The head buckle discards the first <em>Q</em> predictions of each overlapping chunk, which trades throughput for accuracy.
-    Move the bar to see both effects at once:
+    I expected a causal model to make more errors where a window starts, because it has seen the fewest earlier points there. The point-wise
+    error confirmed this for the Transformer-based variants; the CNN-only variant, with its bounded receptive field, does not show the
+    effect. A longer head buckle drops more of those predictions, which trades throughput for accuracy. Move the bar to see both effects at once:
   </p>
   <BuckleDemo />
   <p class="small muted">
     Q = 192 cuts mean error from 3.04 m to 2.16 m and p95 error from 8.83 m to 4.56 m, while still keeping about 9.8k predictions/s.
     Last-point error stays at about 2.1 m throughout, so the gain comes from dropping the poorly contextualised start, not from changing the tail.
   </p>
-  <figure class="hb-anim">
-    <!-- one animation per theme; CSS shows the one that matches the site's light / dark theme -->
-    <picture class="theme-light">
-      <source srcset="/media/rectifiedtraj/reassembly_light_static.svg" media="(prefers-reduced-motion: reduce)" />
-      <img src="/media/rectifiedtraj/reassembly_light.gif" width="760" height="300" loading="lazy" alt="Animation: a window made of a head buckle (HB) and a payload sits over the noisy GPS stream, which scrolls past it. The HB covers points that are already cleaned and serves only as context. Each window is denoised in one model step, its HB predictions are dropped, and its payload is stitched onto the clean trajectory." />
-    </picture>
-    <picture class="theme-dark">
-      <source srcset="/media/rectifiedtraj/reassembly_dark_static.svg" media="(prefers-reduced-motion: reduce)" />
-      <img src="/media/rectifiedtraj/reassembly_dark.gif" width="760" height="300" loading="lazy" alt="Animation: a window made of a head buckle (HB) and a payload sits over the noisy GPS stream, which scrolls past it. The HB covers points that are already cleaned and serves only as context. Each window is denoised in one model step, its HB predictions are dropped, and its payload is stitched onto the clean trajectory." />
-    </picture>
-    <figcaption>Head-buckle reassembly on a stream. Each window overlaps the previous one by its head buckle (HB), whose points are already cleaned and serve only as context. The window is denoised in one step, its HB predictions are dropped, and its payload is stitched onto the clean trajectory; the stream then advances by one payload.</figcaption>
-  </figure>
-
-  <h2>Fast enough on a 2020 budget phone, CPU only</h2>
+  <h3>Fast enough on a 2020 budget phone, CPU only</h3>
   <p>
     I tested deployment on a Google Pixel 4a, a budget phone released in 2020 (Snapdragon 730G), using only its CPU: no GPU, no
     accelerator, no network. Even the largest variant, RT-Hybrid, denoises a 256-point chunk in 124 ms, far below the shortest
@@ -254,6 +250,34 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     <div class="stat"><div class="num">11 ms</div><div class="lbl">RT-CNN per chunk (23k points/s)</div></div>
     <div class="stat"><div class="num">≈1M</div><div class="lbl">parameters (5.1 MB exported model)</div></div>
     <div class="stat"><div class="num">1 step</div><div class="lbl">vs. 500 steps for the DDIM baseline</div></div>
+  </div>
+
+  <h2 id="window-span">The finding I care most about</h2>
+  <p>
+    The synthetic benchmark turned up something odd. DirectReg and DDIM produced <em>huge error spikes</em> on NUMOSIM once the data were
+    downsampled, yet stayed stable on Patterns of Life, a dataset they had never seen, with a different simulator and noise type.
+    ResidualReg and RectifiedTraj stayed stable on both. All four share the same Hybrid backbone, so the architecture is not the explanation.
+  </p>
+  <p>
+    The cause is the <strong>span of the input window</strong>. NUMOSIM agents are always moving, so downsampling makes the distance from
+    the first point of a 256-point window to its farthest point grow sharply: the p95 span goes from <strong>{p95[0]} km at 10 s to
+    {p95[3]} km at 2 min</strong>. Any model that reconstructs the clean coordinates, directly (DirectReg) or indirectly through a denoising
+    process (DDIM), must then output positions far outside the range it was trained on, which is a large out-of-distribution error. A
+    correction-field model predicts only the <em>direction and magnitude</em> of each point's error (its velocity or correction field), so
+    the absolute position drops out of the objective, and the GPS error itself stays near 20 m at every interval.
+  </p>
+  <p>
+    Patterns of Life simulates how people actually behave: they arrive at a place, stay there for a while, and their GPS points stay in a
+    small area. Downsampling barely changes the window span there (its p95 never exceeds 3.76 km), which is why DirectReg and DDIM stay
+    stable on it. Try both objectives and both datasets below.
+  </p>
+
+  <SpanDemo />
+
+  <div class="callout">
+    <strong>An honest result:</strong> a same-backbone <em>residual-regression</em> baseline performs about as well as RectifiedTraj. Most of the
+    stability comes from <em>predicting the correction</em>, not from rectified-flow training as such. I reported this in the extended study
+    because it changes what the method's real contribution is.
   </div>
 
   <h2>Other things the experiments taught me</h2>
@@ -339,7 +363,7 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
 </Base>
 
 <style>
-  .approach { align-items: start; }
+  .approach { align-items: center; }
   .approach p { font-size: .97rem; }
   /* the paper's architecture figure, recoloured to follow the site theme (no white panel) */
   .arch {
@@ -348,7 +372,7 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     --arch-blue: color-mix(in srgb, #4f7db8 24%, var(--surface));
     --arch-red: color-mix(in srgb, var(--accent) 22%, var(--surface));
   }
-  .arch :global(.arch-svg) { display: block; width: auto; max-width: 100%; max-height: 380px; height: auto; margin: 0 auto; overflow: visible; }
+  .arch :global(.arch-svg) { display: block; width: auto; max-width: 100%; max-height: 420px; height: auto; margin: 0 auto; overflow: visible; }
   .hb-anim { margin: 1.5rem 0 2rem; }
   .hb-anim img { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); border: 1px solid var(--line); }
   .hb-anim .theme-dark { display: none; }
