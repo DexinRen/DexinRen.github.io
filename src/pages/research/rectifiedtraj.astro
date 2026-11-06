@@ -243,7 +243,12 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     <figcaption>Head-buckle reassembly on a stream. Each window overlaps the previous one by its head buckle (HB), whose points are already cleaned and serve only as context. The window is denoised in one step, its HB predictions are dropped, and its payload is stitched onto the clean trajectory; the stream then advances by one payload.</figcaption>
   </figure>
 
-  <h2>On a phone</h2>
+  <h2>Fast enough on a 2020 budget phone, CPU only</h2>
+  <p>
+    I tested deployment on a Google Pixel 4a, a budget phone released in 2020 (Snapdragon 730G), using only its CPU: no GPU, no
+    accelerator, no network. Even the largest variant, RT-Hybrid, denoises a 256-point chunk in 124 ms, far below the shortest
+    sampling interval in the study (5 s), so the denoiser keeps up with the GPS stream with plenty of room to spare.
+  </p>
   <div class="stats">
     <div class="stat"><div class="num">124 ms</div><div class="lbl">RT-Hybrid per 256-point chunk, Pixel 4a, CPU only</div></div>
     <div class="stat"><div class="num">11 ms</div><div class="lbl">RT-CNN per chunk (23k points/s)</div></div>
