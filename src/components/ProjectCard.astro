@@ -6,7 +6,7 @@ interface Props { p: Project }
 const { p } = Astro.props;
 const inline = p.image.startsWith('inline:') ? p.image.slice(7) : null;
 const mask = p.image.startsWith('mask:') ? p.image.slice(5) : null; // alpha-mask image painted in the accent colour
-const statusClass = p.status === 'Published' || p.status === 'Released' ? 's-pub' : p.status === 'Ongoing' ? 's-on' : 's-early';
+const statusClass = p.status === 'Published' || p.status === 'Released' || p.status === 'Completed' ? 's-pub' : p.status === 'Ongoing' ? 's-on' : 's-early';
 ---
 <div class="slot">
   <a class="card" href={`/research/${p.slug}/`} data-card aria-describedby={`intro-${p.slug}`}>

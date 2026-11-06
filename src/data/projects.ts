@@ -9,7 +9,7 @@ export interface Project {
   imageFit?: 'cover' | 'contain';
   period: string;
   role: string;
-  status: 'Published' | 'Released' | 'Ongoing' | 'Early stage';
+  status: 'Published' | 'Released' | 'Completed' | 'Ongoing' | 'Early stage';
   tags: string[];
 }
 
@@ -53,7 +53,7 @@ export const projects: Project[] = [
     imageFit: 'contain',
     period: 'Jun 2026 – Sep 2026',
     role: 'Research team member',
-    status: 'Ongoing',
+    status: 'Completed',
     tags: ['Failure analysis', 'Objectives & losses', 'Anomaly detection'],
   },
   {
