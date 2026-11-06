@@ -26,7 +26,7 @@ export const pubs: Pub[] = [
     type: 'Short research paper',
     status: 'To appear',
     links: [
-      { label: 'DOI', href: 'https://doi.org/10.1145/3841645.3843430' },
+      { label: 'Preprint', href: 'https://drive.google.com/file/d/1an4LTKb96VXZn7xlh_8YtIfjap4P86ue/view?usp=drivesdk' },
       { label: 'Poster', href: '/media/rectifiedtraj/rectifiedtraj_poster.pdf' },
       { label: 'Code', href: 'https://github.com/DexinRen/RectifiedTraj' },
     ],
