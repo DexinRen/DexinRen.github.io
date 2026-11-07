@@ -5,56 +5,57 @@ import { site } from '../data/site';
 import { pubs } from '../data/publications';
 
 const education = [
-  { school: 'University of Southern California', degree: 'M.S. Computer Science (General)', when: 'Jan 2025 – Dec 2026', note: 'GPA 3.7 / 4.0 · Research supervisor: Prof. Cyrus Shahabi' },
+  { school: 'University of Southern California', degree: 'M.S. Computer Science (General)', when: 'Jan 2025 – Dec 2026', note: 'GPA 3.7 / 4.0 · Research advisor: Prof. Cyrus Shahabi (USC InfoLab)' },
   { school: 'University of Illinois Urbana-Champaign', degree: 'B.S. Mathematics + Computer Science', when: 'Aug 2021 – May 2024', note: 'GPA 3.62 / 4.0 · High Distinction' },
 ];
 
+// Mirrors the downloadable PDF (public/cv/Dexin_Ren_CV.pdf); keep the two in sync.
 const experience = [
   {
     title: 'RectifiedTraj: Causal GPS Trajectory Denoising', slug: 'rectifiedtraj',
     role: 'Researcher / First-Author Lead, USC InfoLab', when: 'Aug 2025 – Sep 2026',
     bullets: [
-      'Led first-author research from problem formulation through model and data-pipeline design, experiments, failure analysis, and manuscript preparation.',
-      'Found that direct-coordinate prediction fails as trajectory scale grows; controlled comparisons showed that predicting corrections stays stable as input conditions change.',
-      'Designed robustness evaluations across datasets, geographies, simulators, noise conditions, and sampling intervals.',
-      'Analyzed errors at the start of causal prediction windows and evaluated a method that reduces them, measuring the accuracy–throughput trade-off.',
-      'Raised real-world BlogWatcher accuracy from 44.63% to 57.05% (+12.42 pp); CPU-only inference takes about 124 ms per 256-point chunk on a Pixel 4a.',
-    ],
-  },
-  {
-    title: 'HAYSTAC: Human Mobility Anomaly Detection', slug: 'haystac',
-    role: 'Research Team Member, USC InfoLab & Novateur Research Solutions', when: 'Jun 2026 – Sep 2026',
-    bullets: [
-      'Investigated why a specialized mobility-anomaly Transformer underperformed a simpler MLP baseline, using controlled model comparisons.',
-      'Found that architecture explained only part of the gap; extended the investigation to input representations, training objectives, and synthetic supervision.',
-      'Identified a model-selection problem: losses computed on synthetic anomalies can be poorly aligned with performance on evaluation anomalies.',
-      'Redesigned the training data pipeline, roughly halving memory use and speeding up training 2–12× depending on configuration.',
+      'Designed RectifiedTraj, a map-free, causal GPS denoiser that predicts a per-point correction field with one-step rectified flow, built for streaming use on mobile devices (124 ms per 256-point chunk on a 2020 Pixel 4a, CPU only).',
+      'Traced through failure analysis of prediction-error distributions why direct-coordinate models break as trajectories cover more distance, and showed that predicting the correction keeps training and inference stable across datasets.',
+      'Designed a head-buckle windowing scheme for causal streaming that reduced error by 21% at a 24% throughput cost (up to 30% at the extreme setting).',
+      'Designed robustness evaluations across datasets, geography, simulators, noise conditions, and sampling intervals to test generalization beyond training data.',
+      'Demonstrated strong zero-shot generalization across unseen datasets, noise distributions, and GPS sampling intervals, improving accuracy on real-world data by 12.42 percentage points (44.63% to 57.05%).',
     ],
   },
   {
     title: 'NeurogenesisGNN: EEG-Based Neurogenesis Estimation', slug: 'neurogenesis-gnn',
     role: 'Part-Time Research Assistant, USC IMSC & Bonaguidi Lab', when: 'Jun 2026 – present',
     bullets: [
-      'Built the end-to-end pipeline for estimating patient-level hippocampal neurogenesis from EEG and clinical variables, adapting an existing representation model.',
-      'Recognized that ~13,000 EEG clips represented only 30 independent patients and treated it as a high-dimensional, small-sample statistical problem.',
-      'Found that supervised dimensionality reduction with regularized regression performed best; separated clip-level development evaluation from unseen-patient generalization.',
-      'Developed a training-derived percentile aggregation method that combines clip-level predictions into patient-level estimates.',
+      'Built the end-to-end pipeline estimating patient-level hippocampal neurogenesis from EEG and clinical variables, using an existing EEG graph model as a frozen feature extractor.',
+      'Treated ~13,000 clips from only 30 patients (6,400+ features per clip) as a small-sample, high-dimensional problem, using PLS + Ridge and a learned percentile calibrator per patient.',
+      'Detected patient-identity leakage in clip-level validation: with patient-split cross-validation and retraining for every ablation, the apparent importance of disease duration vanished (+12.3 to +0.9 pp), indicating the earlier model was memorizing patients.',
+      'Ran controlled patient-level experiments on encoders, single channels, and channel groups; channels on the tissue-sampling side carried the most signal, and mixing seizure with non-seizure clips lowered error from ~68–72% to ~58%.',
+      'Analyzed the zero-neurogenesis subgroup with hurdle models; current features cannot yet identify it.',
+    ],
+  },
+  {
+    title: 'HAYSTAC: Human Mobility Anomaly Detection', slug: 'haystac',
+    role: 'Research Team Member, USC InfoLab & Novateur Research Solutions', when: 'Jun 2026 – Sep 2026',
+    bullets: [
+      'Ran controlled experiments across architectures, context-window sizes, network depths, and loss functions to diagnose why a specialized Transformer underperformed a simpler MLP baseline.',
+      'Investigated class-imbalance failure modes in sparse-anomaly detection, where near-zero anomaly scores yield low training loss without localizing anomalies.',
+      'Showed that synthetic-anomaly training loss is a poor guide for checkpoint selection (asymmetric focal loss agreed best with detection performance), and that validating on the same synthetic labels hides overtraining.',
+      'Redesigned the training data pipeline, roughly halving memory use and speeding up training by 2–12×.',
     ],
   },
   {
     title: 'TrafficWhatIf / DeepCitySim: Intervention-Aware Traffic Prediction', slug: 'trafficwhatif',
     role: 'Team Lead / Researcher, USC InfoLab', when: 'Sep 2026 – present',
     bullets: [
-      'Leading ongoing research on intervention-aware traffic prediction, focusing on the data and evaluation requirements for learning from road-network changes.',
-      'Developing a benchmark and evaluation strategy aimed at generalization to unseen cities and transfer from simulation to the real world.',
+      'Developing a modular MATSim- and SUMO-based data generation pipeline that produces matched what-if scenarios across traffic policies, agent distributions, and cities.',
+      'Modeling agents with prior travel experience to study how established mobility patterns respond to unexpected traffic-policy interventions.',
     ],
   },
 ];
 
 const skills = [
-  ['Languages', 'Python, C/C++, Java, SQL'],
-  ['ML & Data', 'PyTorch, scikit-learn, NumPy, SciPy, pandas'],
-  ['Systems', 'Linux, Docker, Git, CUDA'],
+  ['Programming', 'Python, C/C++'],
+  ['Other tools', 'Chosen per project as the research requires; quick to learn new frameworks and methods.'],
 ];
 ---
 <Base title="CV" description="Curriculum vitae of Dexin Ren.">
@@ -62,13 +63,13 @@ const skills = [
     <div>
       <p class="eyebrow">Curriculum vitae</p>
       <h1>{site.name}</h1>
-      <p class="muted">M.S. Computer Science · Data-centric &amp; reliable machine learning</p>
+      <p class="muted">M.S. Computer Science · Data-centric &amp; reliable ML for geospatial and health applications</p>
     </div>
     <a class="btn" href={site.cvPdf} download><Icon name="download" />Download PDF</a>
   </div>
 
   <h2>Research focus</h2>
-  <p class="ink-2">Data-centric and reliable machine learning: robustness under distribution shift, analysis of why models fail, and how learning objectives, representations and data characteristics affect generalization.</p>
+  <p class="ink-2">Data-centric and reliable machine learning: robustness under distribution shift, model failure analysis, and generalization in geospatial and health applications. I study how data characteristics, learning objectives, and evaluation design shape what a model actually learns.</p>
 
   <h2>Education</h2>
   {education.map((e) => (
@@ -88,14 +89,6 @@ const skills = [
       </li>
     ))}
   </ol>
-
-  <h2>Honors &amp; awards</h2>
-  {pubs.filter((p) => p.award).map((p) => (
-    <div class="row">
-      <div class="rl"><strong>{p.award}</strong><span class="ink-2"><em>{p.title}</em> · {p.venueShort}</span></div>
-      <div class="rr muted small">Nov {p.year}</div>
-    </div>
-  ))}
 
   <h2>Research experience</h2>
   {experience.map((x) => (
@@ -128,7 +121,7 @@ const skills = [
   .cv-pubs { color: var(--ink-2); font-size: .93rem; padding-left: 1.2em; }
   .cv-pubs li { margin: .6rem 0; }
   .cv-pubs strong { color: var(--ink); }
-  .skills { display: grid; grid-template-columns: 120px 1fr; gap: 6px 16px; font-size: .93rem; }
+  .skills { display: grid; grid-template-columns: 130px 1fr; gap: 6px 16px; font-size: .93rem; }
   .skills dt { font-weight: 600; }
   .skills dd { margin: 0; color: var(--ink-2); }
   @media (max-width: 639px) {
