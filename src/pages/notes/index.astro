@@ -13,6 +13,9 @@ const groups = areas
     return { ...a, name: items[0]?.data.area ?? a.slug, items, fam: familyOf(a.slug) };
   })
   .filter((g) => g.items.length > 0);
+const research = groups.filter((g) => g.fam.key !== 'kitchen');
+const kitchen = groups.filter((g) => g.fam.key === 'kitchen');
+const researchCount = research.reduce((k, g) => k + g.items.length, 0);
 const tagCounts = new Map<string, number>();
 // Tag buttons come from research notes only; kitchen tags stay on the recipe pages themselves.
 notes
@@ -23,7 +26,7 @@ const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14
 <Base title="Notes" description="A wiki of topics in learning theory, online learning, machine learning and mathematics, with the reasoning written in, by Dexin Ren.">
   <p class="eyebrow">Notes</p>
   <h1>Notes</h1>
-  <p class="lede">A small wiki of topics in learning theory, online learning, machine learning and mathematics, plus my kitchen. I only publish a page when it is finished and carries my own reasoning: the missing steps, analogies and “why” that a lecture, textbook or recipe skips.</p>
+  <p class="lede">A small wiki of topics in learning theory, online learning, machine learning and mathematics. I only publish a page when it is finished and carries my own reasoning: the missing steps, analogies and “why” that a lecture or textbook skips.</p>
 
   <aside class="scaffold">
     <p class="sk">Why these notes exist</p>
@@ -42,7 +45,7 @@ const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14
     <a class="btn" href="/notes/graph/"><Icon name="link" />Graph view</a>
     <label class="search">
       <span class="visually-hidden">Filter notes</span>
-      <input id="note-filter" type="search" placeholder={`Filter ${notes.length} notes…`} autocomplete="off" />
+      <input id="note-filter" type="search" placeholder={`Filter ${researchCount} notes…`} autocomplete="off" />
     </label>
   </div>
   {topTags.length > 0 && (
@@ -52,12 +55,10 @@ const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14
   )}
 
   <nav class="toc" aria-label="Areas">
-    {groups.map((g) => <a href={`#${g.slug}`} style={`--c: var(--series-${g.fam.slot})`}><span class="dot" />{g.name} <span class="muted">{g.items.length}</span></a>)}
+    {research.map((g) => <a href={`#${g.slug}`} style={`--c: var(--series-${g.fam.slot})`}><span class="dot" />{g.name} <span class="muted">{g.items.length}</span></a>)}
   </nav>
 
-  {groups.map((g, i) => (
-    <>
-    {g.fam.key === 'kitchen' && groups[i - 1]?.fam.key !== 'kitchen' && <p class="eyebrow beyond" data-area-label>Beyond research</p>}
+  {research.map((g) => (
     <section class="area" id={g.slug} data-area>
       <h2 style={`--c: var(--series-${g.fam.slot})`}><span class="bar" />{g.name}</h2>
       <p class="muted small blurb">{g.blurb}</p>
@@ -70,8 +71,27 @@ const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14
         ))}
       </ul>
     </section>
-    </>
   ))}
+
+  {kitchen.length > 0 && (
+    <details class="surprise" id="surprise">
+      <summary><span class="gift" aria-hidden="true">✦</span>A small surprise<span class="muted small hint">beyond research</span></summary>
+      {kitchen.map((g) => (
+        <section class="area" id={g.slug} data-area>
+      <h2 style={`--c: var(--series-${g.fam.slot})`}><span class="bar" />{g.name}</h2>
+      <p class="muted small blurb">{g.blurb}</p>
+      <ul class="note-list">
+        {g.items.map((n) => (
+          <li data-title={n.data.title.toLowerCase()} data-tags={n.data.tags.join(' ').toLowerCase()}>
+            <a href={`/notes/${n.id}/`}>{n.data.title}</a>
+            {n.data.tags.length > 0 && <span class="ntags">{n.data.tags.slice(0, 3).map((t) => `#${t}`).join(' ')}</span>}
+          </li>
+        ))}
+      </ul>
+    </section>
+      ))}
+    </details>
+  )}
   <p id="no-match" class="muted" hidden>No notes match.</p>
 </Base>
 
@@ -91,9 +111,23 @@ const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14
       sec.hidden = n === 0; shown += n;
     });
     document.getElementById('no-match')!.hidden = shown > 0;
-    const label = document.querySelector<HTMLElement>('[data-area-label]');
-    if (label) label.hidden = ['cookbook', 'kitchen-modules'].every((id) => document.getElementById(id)?.hidden);
+    // the surprise opens while a search matches something inside it, and returns to the visitor's choice afterwards
+    if (surprise) {
+      const inside = Array.from(surprise.querySelectorAll<HTMLElement>('li[data-title]')).some((li) => !li.hidden);
+      surprise.hidden = !inside;
+      surprise.open = q || activeTag ? inside : userOpen;
+    }
   }
+  const surprise = document.getElementById('surprise') as HTMLDetailsElement | null;
+  let userOpen = false;
+  surprise?.querySelector('summary')?.addEventListener('click', () => { userOpen = !surprise.open; });
+  // links such as /notes/#cookbook (breadcrumbs on recipe pages) open it
+  function openForHash() {
+    const t = location.hash && document.getElementById(location.hash.slice(1));
+    if (surprise && t && surprise.contains(t)) { surprise.open = true; userOpen = true; t.scrollIntoView(); }
+  }
+  openForHash();
+  window.addEventListener('hashchange', openForHash);
   input.addEventListener('input', apply);
   tagBtns.forEach((b) => b.addEventListener('click', () => {
     activeTag = activeTag === b.dataset.tag!.toLowerCase() ? '' : b.dataset.tag!.toLowerCase();
@@ -121,7 +155,15 @@ const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14
   .area h2 { display: flex; align-items: center; gap: 10px; font-size: 1.3rem; margin-top: 2.25rem; margin-bottom: .2rem; }
   .bar { width: 4px; height: 1.1em; border-radius: 2px; background: var(--c); }
   .blurb { margin: 0 0 .5rem 14px; }
-  .beyond { margin: 3.5rem 0 -1rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+  .surprise { margin: 3.5rem 0 0; border-top: 1px solid var(--line); padding-top: 1.25rem; }
+  .surprise[hidden] { display: none; }
+  .surprise summary { cursor: pointer; list-style: none; display: inline-flex; align-items: baseline; gap: 10px; font-family: var(--font-serif); font-size: 1.15rem; color: var(--ink-2); padding: 4px 0; }
+  .surprise summary::-webkit-details-marker { display: none; }
+  .surprise summary:hover { color: var(--accent-ink); }
+  .surprise .gift { color: var(--accent); display: inline-block; transition: transform .4s ease; }
+  .surprise[open] .gift { transform: rotate(180deg); }
+  .surprise .hint { font-family: var(--font-sans); }
+  .surprise > .area:first-of-type h2 { margin-top: 1.25rem; }
   .note-list { list-style: none; padding: 0; margin: 0; }
   .note-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: .45rem 0 .45rem 14px; border-bottom: 1px dashed var(--line); }
   .note-list li[hidden] { display: none; }

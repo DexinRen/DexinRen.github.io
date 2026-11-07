@@ -4,7 +4,7 @@ const steps = [
   { t: 'EEG recordings', s: 'per patient, very uneven length' },
   { t: '60-s clips', s: '≈13k clips · 30 patients' },
   { t: 'NeuroGNN encoder', s: 'frozen · InfoLab model', ext: true },
-  { t: 'Clip features', s: '≈6.4k-d EEG + age, disease duration' },
+  { t: 'Clip features', s: '≈6.4k-d EEG embedding + phase coherence + clinical variables' },
   { t: 'Zero / non-zero gate', s: 'logistic hurdle (optional)' },
   { t: 'PLS → Ridge', s: 'supervised low-rank + ℓ2 shrinkage' },
   { t: 'Percentile calibrator', s: 'clip predictions → one estimate' },

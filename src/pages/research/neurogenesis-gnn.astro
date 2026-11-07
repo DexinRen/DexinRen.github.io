@@ -5,25 +5,69 @@ import Chart from '../../components/Chart.astro';
 import NeuroPipeline from '../../components/NeuroPipeline.astro';
 
 // Aggregate, cohort-level results only. No patient-level data is shown on this page.
-const regimes = [
-  { label: 'Zero-neurogenesis patients excluded', value: 29.08, slot: 2, note: 'Reference: the regression problem without the zero subgroup.' },
-  { label: 'Gate + head trained on all patients', value: 472.9, slot: 1 },
-  { label: 'No gate, head trained on all patients', value: 1145.73, slot: 'ref' },
-  { label: 'Gate + head trained on non-zero only', value: 8795.35, slot: 'ref', note: 'Gate false negatives reach a regressor that never saw a zero.' },
-  { label: 'No gate, head trained on non-zero only', value: 1e13, slot: 'ref', note: 'Approximate: unbounded extrapolation on zero patients.' },
-];
+// Error = patient-level relative error, mean ± SD across held-out patients (patient-split CV).
+// Zero-neurogenesis patients are excluded everywhere except the zero-patient section.
 
-// Leave-one-input-out ablation: change in patient-level relative error (percentage points) when the input is removed.
-// Positive = removing the input hurts (the input helps).
-const ablationRaw: [string, number][] = [
-  ['EEG O2', 14.49], ['EEG F4', 12.35], ['Disease duration', 12.31], ['EEG Fz', 12.01], ['EEG Fp1', 10.43], ['EEG Cz', 10.12],
-  ['EEG C4', 6.27], ['EEG F8', 5.35], ['EEG T5', 4.87], ['EEG T3', 3.04], ['EEG Pz', 2.86], ['EEG F3', 2.8], ['EEG P4', 2.46],
-  ['EEG O1', 2.01], ['EEG F7', 1.9], ['Age', 1.66], ['EEG Fp2', 1.5], ['EEG T6', 1.24], ['EEG T4', -1.2], ['EEG P3', -1.22], ['EEG C3', -1.41],
+// Encoder comparison (NeuroGNN embedding + phase-coherence matrix unless noted)
+const encoders = [
+  { label: 'Detection NeuroGNN (previous)', value: 70.58, sd: 48.81, pls: 6, slot: 'ref' },
+  { label: 'Seizure-type NeuroGNN', value: 68.9, sd: 31.61, pls: 9, slot: 1 },
+  { label: 'Phase coherence only', value: 69.21, sd: 38.45, pls: 4, slot: 2 },
+  { label: 'Self-supervised NeuroGNN', value: 76.88, sd: 38.16, pls: 1, slot: 'ref' },
+].map((e) => ({ ...e, note: `± ${e.sd.toFixed(2)} SD · ${e.pls} PLS components` }));
+
+// Leave-one-input-out, retrained and re-tuned per case. Δ vs baseline 70.58 ± 48.81 (pp).
+// Positive Δ error = removing the input hurts (the input helps).
+const singles: [string, number, number, number][] = [
+  // [input, Δ error, Δ SD, best PLS]
+  ['Fp1', 0.97, 1.37, 6], ['Fp2', -1.89, -2.97, 6], ['F3', -0.33, -4.7, 8], ['F4', -0.99, -6.93, 8],
+  ['C3', 1.23, -0.65, 6], ['C4', -0.55, -7.12, 8], ['P3', -0.3, -1.06, 6], ['P4', -1.71, -1.9, 6],
+  ['O1', -1.19, -3.61, 6], ['O2', 0.34, -3.63, 8], ['F7', 0.01, -0.84, 6], ['F8', 0.62, -6.36, 6],
+  ['T3', 1.69, -4.44, 6], ['T4', 3.5, -4.35, 7], ['T5', -6.35, -24.43, 5], ['T6', 0.18, -3.9, 8],
+  ['Fz', -5.4, -8.44, 8], ['Cz', 2.45, -7.11, 7], ['Pz', -6.22, -12.61, 6],
+  ['Age', -0.21, 0.16, 6], ['Disease duration', 0.86, -0.37, 6], ['Laterality', -1.96, -3.54, 6],
+  ['Seizure frequency', -0.53, -0.13, 6], ['Seizure length', -0.78, -1.19, 6], ['Phase coherence', 0.58, -9.59, 9],
 ];
-const ablation = ablationRaw.map(([label, value]) => ({
+const singleItems = [...singles]
+  .sort((a, b) => b[1] - a[1])
+  .map(([label, value, sd, pls]) => ({
+    label, value,
+    slot: label === 'Disease duration' ? 1 : 'ref',
+    note: `Δ SD ${sd > 0 ? '+' : ''}${sd.toFixed(2)} pp · ${pls} PLS components`,
+  }));
+
+const groups: [string, number, number, number][] = [
+  ['Same-side + midline', 26.34, 31.26, 20],
+  ['Same-side', 9.64, -14.25, 3],
+  ['Different-side', 0.31, -26.53, 4],
+  ['Different-side + midline', -1.17, -28.4, 4],
+  ['Midline', -3.23, -10.41, 6],
+];
+const groupItems = groups.map(([label, value, sd, pls]) => ({
   label, value,
-  slot: label === 'Disease duration' ? 1 : label === 'Age' ? 2 : 'ref',
+  slot: label === 'Same-side + midline' ? 1 : 'ref',
+  note: `Δ SD ${sd > 0 ? '+' : ''}${sd.toFixed(2)} pp · ${pls} PLS components`,
 }));
+
+// Clip type, with the number of clips per patient held fixed (patients with ≥ 30 seizure clips only)
+const clipMix = [
+  { label: '30 seizure clips', value: 72.23, sd: 58.84, pls: 5, slot: 'ref' },
+  { label: '30 non-seizure clips', value: 67.98, sd: 29.64, pls: 2, slot: 'ref' },
+  { label: '15 seizure + 15 non-seizure', value: 57.92, sd: 31.74, pls: 5, slot: 1 },
+].map((e) => ({ ...e, note: `± ${e.sd.toFixed(2)} SD · ${e.pls} PLS components` }));
+
+// Zero-neurogenesis patients included
+const zeros = [
+  { label: 'Gate + head trained with zeros', value: 300.21, sd: 458.38, pls: 6, slot: 1 },
+  { label: 'No gate, head trained with zeros', value: 306.62, sd: 454.68, pls: 6, slot: 2 },
+  { label: 'Gate, head trained without zeros', value: 5124.63, sd: 8896.37, pls: 3, slot: 'ref' },
+  { label: 'No gate, head trained without zeros', value: 8720.18, sd: 7770.8, pls: 3, slot: 'ref' },
+].map((e) => ({ ...e, note: `± ${e.sd.toLocaleString('en-US')} SD · ${e.pls} PLS components` }));
+
+const sdRow = (e: { label: string; value: number; sd: number; pls: number }) =>
+  [e.label, `${e.value.toFixed(2)} ± ${e.sd.toFixed(2)}`, e.pls];
+const dRow = ([k, v, sd, pls]: [string, number, number, number]) =>
+  [k, (v > 0 ? '+' : '') + v.toFixed(2), (sd > 0 ? '+' : '') + sd.toFixed(2), pls];
 ---
 <Base title="NeurogenesisGNN" description="Estimating patient-level hippocampal neurogenesis from EEG and clinical variables when thousands of clips come from only a few dozen patients.">
   <ProjectHeader
@@ -36,8 +80,8 @@ const ablation = ablationRaw.map(([label, value]) => ({
     tags={['Small-n / high-d learning', 'Evaluation design', 'Biomedical ML', 'Interpretability']}
     tldr={[
       '<strong>13,000 clips ≠ 13,000 samples.</strong> The effective sample size is about 30 patients, so the prediction head is a statistical model (PLS + Ridge) on frozen EEG embeddings, not a deep network.',
-      'Zero-neurogenesis patients behave like a <strong>separate regime</strong>. A gate trained on all patients cut error from ~1,146% to ~473%, but its misses remain the main failure mode.',
-      'A <strong>learned percentile calibrator</strong> replaces the median for turning a patient’s clip predictions into one estimate.',
+      '<strong>An early finding did not survive a stricter test.</strong> With clips split at random, disease duration looked like one of the most useful inputs. With patients split and the model retrained for every ablation, removing it barely matters; the model was probably recognising patients through it.',
+      'Under patient-level evaluation, <strong>mixing seizure and non-seizure clips</strong> lowers error from ~68–72% to ~58%, and the channels on the <strong>side where tissue was sampled</strong> carry the most signal. Zero-neurogenesis patients remain the open problem.',
     ]}
   />
 
@@ -64,16 +108,6 @@ const ablation = ablationRaw.map(([label, value]) => ({
     (supervised dimensionality reduction). Ridge then shrinks the weights on those components. Every step, scaling included, is fitted on
     training folds only.
   </p>
-
-  <NeuroPipeline />
-
-  <h2>Evaluating at the right unit</h2>
-  <p>
-    Splitting clips at random is fast and gives stable numbers, but clips from one patient land in both train and test, so it does not measure
-    generalization to <em>new patients</em>. Early on, patient-level folds were too unstable to guide development: some folds held a single
-    patient with a few minutes of EEG. I therefore used clip-level CV only as a development signal and treated it as such. As the cohort and
-    recordings grow, patient-level evaluation becomes the yardstick for any final claim.
-  </p>
   <p>
     Turning a patient’s clip predictions into one number also matters. The clip predictions have heavy outliers, so I first used the
     <strong>median</strong>. Looking at individual patients showed the median was often not the closest percentile. The
@@ -81,48 +115,125 @@ const ablation = ablationRaw.map(([label, value]) => ({
     the true label, then reads that percentile off each test patient’s distribution.
   </p>
 
-  <h2>A second regime: zero neurogenesis</h2>
-  <p>
-    Plotting prediction quality patient by patient showed that most severe outliers were patients with <em>zero</em> measured neurogenesis.
-    Two problems compound here. The relative-error metric is close to undefined near zero, since a 1-unit miss becomes a huge percentage.
-    A linear head also cannot fit a qualitative “off” state that sits far below every non-zero patient. A logistic zero/non-zero gate
-    (hurdle model) in front of the regressor helps, but which data each part sees matters a great deal:
-  </p>
-  <Chart
-    title="Patient-level relative error by configuration (log scale)"
-    spec={{ type: 'hbar', items: regimes, log: true, unit: '%', decimals: 1, xLabel: 'relative error (%, log scale)' }}
-    caption="Without the zero subgroup, the same pipeline reaches ~29%. With zero patients included, the best setup is a gate plus a regressor that has also seen zeros, so it degrades gracefully when the gate misses. A non-zero-only regressor without a gate extrapolates without bound. The zero subgroup currently looks like a different, likely non-linear regime, which is a hypothesis rather than a finding."
-    table={{ head: ['Configuration', 'Relative error (%)'], rows: regimes.map((r) => [r.label, r.value >= 1e6 ? '≈1e13' : r.value.toFixed(2)]) }}
-  />
+  <NeuroPipeline />
 
-  <h2>What the inputs contribute</h2>
+  <h2>A result that did not survive</h2>
   <p>
-    A leave-one-input-out ablation, alongside SHAP analysis, measures how much patient-level error rises when each input is removed. Two results
-    were instructive:
+    Early on, patient-level folds were too unstable to guide development (some folds held a single patient with a few minutes of EEG),
+    so I used clip-level cross-validation as a development signal. Its first input ablation looked clinically sensible:
+    <strong>disease duration</strong> came out among the most useful inputs, in line with reports that neurogenesis declines the longer
+    epilepsy lasts. Two things about that experiment were wrong:
   </p>
   <ul>
-    <li><strong>Disease duration</strong> is among the most useful inputs, consistent with clinical reports that neurogenesis declines with longer epilepsy duration.</li>
-    <li><strong>Age</strong> adds little. The age–neurogenesis literature is mostly about healthy adults, and in this cohort the disease effect seems to dominate.</li>
-    <li>Inputs whose removal <em>helps</em> only help slightly. PLS assigns little weight to directions unrelated to the label, and Ridge limits what is left.</li>
+    <li>
+      <strong>Leakage through the patient.</strong> With clips split at random, the same patient appears in training and test. Disease
+      duration is constant within a patient, so it can work as a patient ID: the model sees a familiar value and returns a familiar label.
+    </li>
+    <li>
+      <strong>Removing an input is not the same as not having it.</strong> I removed each input from a model already trained on all of them.
+      PLS + Ridge weights features by how they relate to the training labels, so that model may lean on a few inputs and barely use the rest.
+      Dropping an input it never relied on shows nothing about whether the input carries information.
+    </li>
   </ul>
+  <p>
+    So I changed both. Cross-validation now splits <strong>by patient</strong>, so test patients are never seen in training, and every input
+    combination is <strong>retrained and re-tuned from scratch</strong>, including the number of PLS components. To keep runs fast and
+    comparable, these controlled experiments use a subset of the data: 30 non-seizure clips and up to 30 seizure clips per patient.
+  </p>
+  <div class="stats">
+    <div class="stat"><div class="num">+12.3 pp</div><div class="lbl">error increase from removing disease duration: clip-level split, removed at evaluation</div></div>
+    <div class="stat"><div class="num">+0.9 pp</div><div class="lbl">the same input under patient-level split, model retrained without it</div></div>
+    <div class="stat"><div class="num">29% → 71%</div><div class="lbl">baseline error, clip-level split vs patient-level split (controlled subset): the honest number is much worse</div></div>
+  </div>
+  <p>
+    My reading is that the earlier model was partly memorising patients through disease duration. That is a hypothesis, but the size of the
+    change, and the jump in baseline error once patients are held out, both point the same way. The old ablation is retired.
+  </p>
+
+  <h2>Which encoder?</h2>
+  <p>
+    With the stricter setup in place, I compared EEG encoders. Each one is combined with the phase-coherence matrix (a simple measure of how
+    synchronised each pair of channels is), except the last configuration, which uses the coherence matrix alone.
+  </p>
   <Chart
-    title="Increase in patient-level error when one input is removed (percentage points)"
-    spec={{ type: 'hbar', items: ablation, signed: true, decimals: 1, xLabel: 'Δ relative error when removed (pp) · higher = more useful input' }}
-    caption="Baseline (all inputs, zero patients excluded): 29.1% relative error. These are predictive contributions in this cohort, not causal medical conclusions."
-    table={{ head: ['Removed input', 'Δ relative error (pp)'], rows: ablationRaw.map(([k, v]) => [k, v.toFixed(2)]) }}
+    title="Patient-level relative error by EEG encoder (lower is better)"
+    spec={{ type: 'hbar', items: encoders, unit: '%', decimals: 1, xLabel: 'mean patient-level relative error (%)' }}
+    caption="The NeuroGNN trained for seizure-type classification is slightly better than the detection model used so far, and clearly more stable across patients (SD 31.6 vs 48.8). The phase-coherence matrix alone almost matches it. With only ~21 non-zero patients and standard deviations of 30–50 points, gaps of 1–2 points are not meaningful on their own; the coherence result is the more interesting one."
+    table={{ head: ['Encoder / inputs', 'Error (%) mean ± SD', 'PLS comp.'], rows: encoders.map(sdRow) }}
+  />
+
+  <h2>What the inputs contribute, measured properly</h2>
+  <p>
+    The ablation, rerun with patient splits and retraining. Baseline: 70.58% ± 48.81. Values are changes in percentage points; positive means
+    removing the input <em>hurts</em>. How I read the two directions: if removing an input changes nothing, it either carries little
+    information or other inputs already cover it. If removing it <em>helps</em>, it may add noise, or let the model learn patterns that work
+    for some training patients but do not transfer to new ones.
+  </p>
+  <Chart
+    title="Change in patient-level error when one input is removed (pp)"
+    spec={{ type: 'hbar', items: singleItems, signed: true, decimals: 1, xLabel: 'Δ error when removed (pp) · positive = the input helps' }}
+    caption="Disease duration (highlighted) now sits next to zero. Removing T5, Pz or Fz lowers error by 5–6 points; T5 also cuts the spread across patients by 24 points. Single-channel effects of a few points are within the noise of this cohort and are leads to check, not conclusions."
+    table={{ head: ['Removed input', 'Δ error (pp)', 'Δ SD (pp)', 'PLS comp.'], rows: singles.map(dRow) }}
+  />
+  <p>
+    Grouping channels by the hemisphere where the patient’s brain tissue was sampled tells a clearer story than single channels:
+  </p>
+  <Chart
+    title="Removing channel groups: change in patient-level error (pp)"
+    spec={{ type: 'hbar', items: groupItems, signed: true, decimals: 1, xLabel: 'Δ error when removed (pp) · positive = the channels help' }}
+    caption="“Same-side” = channels over the hemisphere where tissue was sampled; “midline” = Fz, Cz, Pz."
+    table={{ head: ['Removed channels', 'Δ error (pp)', 'Δ SD (pp)', 'PLS comp.'], rows: groups.map(dRow) }}
+  />
+  <ul>
+    <li><strong>Same-side channels matter most.</strong> Removing them costs 9.6 points; removing them together with the midline costs 26.3 points and nearly doubles the spread across patients. This fits the measurement being taken on that side, but it is a correlation in this cohort, not a mechanism.</li>
+    <li><strong>Different-side channels mostly add variance.</strong> Without them the mean error is unchanged, but the standard deviation drops by 26.5 points, more than half.</li>
+    <li><strong>The midline interacts.</strong> Removing it alone <em>helps</em> by 3.2 points, yet removing it together with the same-side channels hurts far more than removing the same-side channels alone. I do not have an explanation for this yet.</li>
+  </ul>
+
+  <h2>Seizure clips, non-seizure clips, or both?</h2>
+  <p>
+    Here I kept the number of clips per patient fixed and changed only their type. Only patients with at least 30 seizure clips are included,
+    so these numbers are not directly comparable with the baseline above.
+  </p>
+  <Chart
+    title="Patient-level relative error by clip type (30 clips per patient)"
+    spec={{ type: 'hbar', items: clipMix, unit: '%', decimals: 1, xLabel: 'mean patient-level relative error (%)' }}
+    caption="With the clip count held equal, the mix beats both seizure-only and non-seizure-only training by 10–14 points. The two clip types seem to carry complementary information."
+    table={{ head: ['Clips per patient', 'Error (%) mean ± SD', 'PLS comp.'], rows: clipMix.map(sdRow) }}
+  />
+
+  <h2>A second regime: zero neurogenesis</h2>
+  <p>
+    Plotting prediction quality patient by patient showed that most severe outliers were patients with <em>zero</em> measured neurogenesis,
+    which is why they are excluded above. There are two possible reasons, and I cannot yet tell them apart. One is measurement: the density
+    of new neurons in resected tissue drops quickly, so a sample that is not processed right away can read as zero, and some zeros may be
+    handling artefacts. The other is biology: the zero group may be a genuinely different, non-linear regime that a linear head such as
+    PLS + Ridge cannot express. On top of both, relative error is close to undefined near zero, since a small miss becomes a huge percentage.
+  </p>
+  <p>
+    I tested a logistic zero/non-zero gate (hurdle model) in front of the regressor, and whether the regression head sees zero patients
+    during training:
+  </p>
+  <Chart
+    title="Patient-level relative error with zero-neurogenesis patients included (log scale)"
+    spec={{ type: 'hbar', items: zeros, log: true, unit: '%', decimals: 0, xLabel: 'relative error (%, log scale)' }}
+    caption="What matters is whether the head has seen zeros: errors fall from thousands of percent to ~300%. Under patient-level evaluation the gate itself adds almost nothing (300% vs 307%). Even the best setup is far from usable, which supports the concern that the current features do not contain enough information to recognise zero-neurogenesis patients."
+    table={{ head: ['Configuration', 'Error (%) mean ± SD', 'PLS comp.'], rows: zeros.map(sdRow) }}
   />
 
   <h2>What this project taught me</h2>
   <p>
-    How to work with data that are scarce, heterogeneous and unevenly distributed. That means choosing models by effective sample size,
-    being explicit about what each evaluation can show, and finding subgroups that break a model. It was also my first time adapting
-    someone else’s model as a component for a new objective.
+    How to work with data that are scarce, heterogeneous and unevenly distributed: choosing models by effective sample size, being explicit
+    about what each evaluation can show, and finding subgroups that break a model. Also that a result can be plausible, consistent with the
+    literature, and still be leakage; the evaluation has to match the claim before the result means anything. It was also my first time
+    adapting someone else’s model as a component for a new objective.
   </p>
 
   <h2>Next</h2>
   <ul>
-    <li>Final results on patient-level cross-validation as the cohort grows toward the planned size.</li>
-    <li>Separate learned models for the zero and non-zero regimes behind the hurdle gate, and better calibrated gating.</li>
+    <li>Repeat the controlled experiments on the full dataset, with patient-level cross-validation throughout.</li>
+    <li>Follow up the channel findings: the same-side/midline interaction, and why removing T5, Fz or Pz helps.</li>
+    <li>Separate the two explanations for zero-neurogenesis patients, and model that regime separately if it is real.</li>
     <li>Per-patient prediction variance as a first-class output, a prerequisite for anything clinical.</li>
     <li>Add MRI as a further modality; explore fine-tuning the encoder on this task.</li>
   </ul>

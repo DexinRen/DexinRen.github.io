@@ -11,11 +11,23 @@ export interface Project {
   role: string;
   status: 'Published' | 'Released' | 'Completed' | 'Ongoing' | 'Early stage';
   tags: string[];
+  featured?: number;     // shown as a card on the Home page, in this order
+  featuredIfRoom?: boolean; // only shown when the Home row has room for it (3 cards per row)
+  cover?:                // faint background art for the Home card
+    | { kind: 'mask'; src: string }
+    | { kind: 'denoise'; raw: string; clean: string }
+    | { kind: 'anomaly' }
+    | { kind: 'boxed' }
+    | { kind: 'cf' }
+    | { kind: 'traffic'; roads: string; anim: string; still: string }
+    | { kind: 'eeg' };
 }
 
 export const projects: Project[] = [
   {
     slug: 'rectifiedtraj',
+    cover: { kind: 'denoise', raw: '/media/rectifiedtraj/cover_raw.webp', clean: '/media/rectifiedtraj/cover_rt.webp' },
+    featured: 1,
     title: 'RectifiedTraj',
     subtitle: 'Map-free, causal GPS trajectory denoising',
     intro:
@@ -30,6 +42,9 @@ export const projects: Project[] = [
   },
   {
     slug: 'neurogenesis-gnn',
+    cover: { kind: 'eeg' },
+    featured: 3,
+    featuredIfRoom: true,
     title: 'NeurogenesisGNN',
     subtitle: 'Estimating hippocampal neurogenesis from EEG',
     intro:
@@ -44,6 +59,7 @@ export const projects: Project[] = [
   },
   {
     slug: 'haystac',
+    cover: { kind: 'anomaly' },
     title: 'Mobility anomaly detection',
     subtitle: 'Why a purpose-built Transformer lost to a simple MLP',
     intro:
@@ -58,6 +74,8 @@ export const projects: Project[] = [
   },
   {
     slug: 'trafficwhatif',
+    cover: { kind: 'traffic', roads: '/media/trafficwhatif/pasadena_roads.webp', anim: '/media/trafficwhatif/pasadena_traffic.gif', still: '/media/trafficwhatif/pasadena_traffic_still.png' },
+    featured: 2,
     title: 'TrafficWhatIf',
     subtitle: 'Data for intervention-aware traffic prediction',
     intro:
@@ -72,6 +90,7 @@ export const projects: Project[] = [
   },
   {
     slug: 'dementia-counterfactuals',
+    cover: { kind: 'cf' },
     title: 'Correlation-aware counterfactuals',
     subtitle: 'More realistic lifestyle advice from a dementia risk model',
     intro:
@@ -86,6 +105,7 @@ export const projects: Project[] = [
   },
   {
     slug: 'qwen-math-sft',
+    cover: { kind: 'boxed' },
     title: 'Math SFT for Qwen2.5',
     subtitle: 'Fine-tuning a 0.5B model to give checkable answers',
     intro:

@@ -1,6 +1,7 @@
 ---
 import CardVisual from './CardVisual.astro';
 import Icon from './Icon.astro';
+import ProjectCover from './ProjectCover.astro';
 import type { Project } from '../data/projects';
 interface Props { p: Project }
 const { p } = Astro.props;
@@ -11,6 +12,7 @@ const statusClass = p.status === 'Published' || p.status === 'Released' || p.sta
 <div class="slot">
   <a class="card" href={`/research/${p.slug}/`} data-card aria-describedby={`intro-${p.slug}`}>
     <div class="head">
+      {p.cover && <div class:list={['cv', p.cover.kind]}><ProjectCover cover={p.cover} /></div>}
       <span class:list={['chip status', statusClass]}>{p.status}</span>
       <h3 class="title">{p.title}</h3>
       <p class="sub">{p.subtitle}</p>
@@ -18,12 +20,14 @@ const statusClass = p.status === 'Published' || p.status === 'Released' || p.sta
     </div>
     <div class="more">
       <div class="more-inner">
-        <div class:list={['visual', p.imageFit === 'cover' ? 'cover' : 'contain']}>
-          {inline ? <CardVisual name={inline} />
-            : mask ? <span class="mask-vis" role="img" aria-label={p.imageAlt} style={`--img: url(${mask})`}></span>
-            : <img src={p.image} alt={p.imageAlt} loading="lazy" decoding="async" />}
-        </div>
-        <p class="intro" id={`intro-${p.slug}`}>{p.intro}</p>
+        {!p.cover && (
+          <div class:list={['visual', p.imageFit === 'cover' ? 'cover' : 'contain']}>
+            {inline ? <CardVisual name={inline} />
+              : mask ? <span class="mask-vis" role="img" aria-label={p.imageAlt} style={`--img: url(${mask})`}></span>
+              : <img src={p.image} alt={p.imageAlt} loading="lazy" decoding="async" />}
+          </div>
+        )}
+        <p class:list={['intro', { first: p.cover }]} id={`intro-${p.slug}`}>{p.intro}</p>
         <ul class="chips">{p.tags.map((t) => <li class="chip">{t}</li>)}</ul>
         <span class="cta">Read the project <Icon name="arrow" size={15} /></span>
       </div>
@@ -32,7 +36,7 @@ const statusClass = p.status === 'Published' || p.status === 'Released' || p.sta
 </div>
 
 <style>
-  .slot { position: relative; height: var(--slot-h, 212px); }
+  .slot { position: relative; height: var(--slot-h, 300px); }
   .card {
     position: absolute; inset: 0 0 auto 0; min-height: 100%;
     display: flex; flex-direction: column;
@@ -43,11 +47,24 @@ const statusClass = p.status === 'Published' || p.status === 'Released' || p.sta
     transition: transform .28s cubic-bezier(.2,.7,.2,1), box-shadow .28s, border-color .2s;
     -webkit-tap-highlight-color: transparent;
   }
-  .head { display: flex; flex-direction: column; gap: 6px; }
-  .title { margin: 6px 0 0; font-size: 1.4rem; }
-  .sub { margin: 0; color: var(--ink-2); font-size: .95rem; line-height: 1.45; }
-  .meta { margin: 4px 0 0; color: var(--ink-3); font-size: .78rem; }
+  .head { display: flex; flex-direction: column; gap: 4px; }
+  /* animated banner across the top of the card (same art as the Home cards); the text sits below it */
+  .cv {
+    position: relative; height: 140px; margin: -20px -20px 12px; overflow: hidden; pointer-events: none;
+    border-radius: var(--radius) var(--radius) 0 0; border-bottom: 1px solid var(--line); background: var(--surface);
+  }
+  .cv :global(.pc) { opacity: .6; transition: opacity .3s ease, transform .6s ease; }
+  .cv.eeg :global(.pc), .cv.anomaly :global(.pc), .cv.boxed :global(.pc), .cv.cf :global(.pc) { opacity: .8; }
+  .card:hover .cv :global(.pc), .card.is-open .cv :global(.pc), .card:focus-visible .cv :global(.pc) { opacity: 1; }
+  .cv.eeg :global(.pc svg) { inset: 4% 0; height: 92%; }
+  .cv.boxed :global(.bx) { align-items: center; padding: 0; }
+  .title { margin: 0; font-size: 1.2rem; line-height: 1.25; }
+  .sub { margin: 0; color: var(--ink-2); font-size: .86rem; line-height: 1.4; }
+  .meta { margin: 2px 0 0; color: var(--ink-3); font-size: .74rem; }
   .status { align-self: flex-start; }
+  /* compact: the status chip sits on the art strip, the text block stays below it */
+  .cv + .status { position: absolute; top: 12px; left: 12px; z-index: 2; font-size: .72rem; box-shadow: var(--shadow-sm); }
+  .cv ~ .title { margin-top: 2px; }
   .s-pub { color: color-mix(in srgb, var(--series-2) 70%, var(--ink)); background: color-mix(in srgb, var(--series-2) 12%, var(--surface)); border-color: transparent; }
   .s-on { color: var(--accent-ink); background: var(--accent-soft); border-color: transparent; }
   .s-early { color: color-mix(in srgb, var(--series-4) 65%, var(--ink)); background: color-mix(in srgb, var(--series-4) 14%, var(--surface)); border-color: transparent; }
@@ -67,6 +84,7 @@ const statusClass = p.status === 'Published' || p.status === 'Released' || p.sta
   .visual.cover img { object-fit: cover; object-position: center 40%; }
   .visual.contain img { object-fit: contain; padding: 6px; }
   .visual.contain :global(svg) { padding: 8px; }
+  .intro.first { margin-top: 14px; }
   .intro { font-size: .9rem; color: var(--ink-2); line-height: 1.55; margin: 0 0 12px; }
   .cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; font-size: .85rem; font-weight: 600; color: var(--accent-ink); }
 

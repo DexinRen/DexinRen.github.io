@@ -1,0 +1,60 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="About" description="About Dexin Ren: background, why I do research, and how ideas arrive.">
+  <p class="eyebrow">About</p>
+  <h1>About me</h1>
+
+  <section>
+    <p>
+      I am a master's student in Computer Science at the University of Southern California, where I have been lucky to be
+      supervised by Professor <a href="https://viterbi.usc.edu/directory/faculty/Shahabi/Cyrus" target="_blank" rel="noopener">Cyrus Shahabi</a>.
+      I work as a research assistant in his lab, <a href="https://infolab.usc.edu/" target="_blank" rel="noopener">USC InfoLab</a>. Before that, I studied
+      Mathematics + Computer Science at the University of Illinois Urbana-Champaign.
+    </p>
+    <p>
+      My projects span GPS trajectories, EEG and mobility logs, but the method is the same each time. When a model
+      behaves unexpectedly, I treat it as a question about the data and the training setup, not as tuning noise.
+      In <a href="/research/rectifiedtraj/">RectifiedTraj</a>, direct-coordinate models failed because of the spatial scale
+      of their inputs, and predicting the correction fixed it. In <a href="/research/neurogenesis-gnn/">NeurogenesisGNN</a>, 13,000 EEG clips amounted to
+      only 30 independent patients, and the model and the evaluation had to be designed around that.
+    </p>
+  </section>
+
+  <section class="why">
+    <h2>Why I do research</h2>
+    <p>
+      I treat every project like something I am raising. I design it carefully, look after it, and keep working on it until it is
+      as good as I can make it, and then a little better. What I enjoy most is solving problems in creative ways and watching a
+      system I built become clean and complete.
+    </p>
+    <p>
+      The best moments are the ones I did not plan: an old design turns out to answer a new question, or a problem I had not
+      foreseen has already been solved by something I built earlier. Learning, talking with great minds through their work,
+      designing complex systems, and running into questions no one had asked yet: that whole process gives me deep joy, and at
+      times it moves me to tears.
+    </p>
+  </section>
+
+  <section>
+    <h2>How ideas arrive</h2>
+    <p>
+      I have ADHD and autism, and I am proud of both: they are part of why I love finding creative routes through hard problems.
+      My mind rarely holds one idea at a time. Ideas keep surfacing, and every so often several of them lock together, like
+      instruments in a symphony finding the same key. On a long drive recently I was turning over JEPA, a self-supervised method
+      that predicts hidden parts of an input from the visible parts. Within minutes it had connected to two of my projects. For the
+      dementia-risk project, an encoder with JEPA-style masked completion could fill in the risk factors that have to move together
+      when DiCE suggests a change, so the counterfactuals stay realistic. It also opened a new angle on my traffic simulation work.
+      Somewhere on the same road I designed a pool game in which a devil cat sits on the table, bites the player, knocks the balls
+      around and drags pocketed balls back out.
+    </p>
+    <p>
+      Living like this feels like travelling through a high-dimensional space: millions of directions, and every one of them
+      brings me joy. Research is how I turn a few of them into something careful and complete.
+    </p>
+  </section>
+</Base>
+
+<style>
+  .why p:first-of-type { font-family: var(--font-serif); font-size: 1.15rem; color: var(--ink); line-height: 1.55; }
+</style>

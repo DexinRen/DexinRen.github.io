@@ -75,7 +75,9 @@ const url = (id: string) => `/notes/${id}/`;
     {prev ? <a class="pn-l" href={url(prev.id)}><span class="small muted">← Previous</span><span>{prev.data.title}</span></a> : <span />}
     {next ? <a class="pn-r" href={url(next.id)}><span class="small muted">Next →</span><span>{next.data.title}</span></a> : <span />}
   </nav>
+  {fam.key !== 'kitchen' && (
   <p class="small"><a href={`/notes/graph/?focus=${encodeURIComponent(note.id)}`}><Icon name="link" size={13} /> See this note in the graph</a></p>
+  )}
 </Base>
 
 <script>

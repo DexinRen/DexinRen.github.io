@@ -22,5 +22,6 @@ export const nav = [
   { href: '/publications/', label: 'Publications' },
   { href: '/cv/', label: 'CV' },
   { href: '/notes/', label: 'Notes' },
-  { href: '/ai-usage/', label: 'AI Usage' },
+  { href: '/ai-usage/', label: 'How I use AI' },
+  { href: '/about/', label: 'About' },
 ];

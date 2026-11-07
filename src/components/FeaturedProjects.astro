@@ -1,0 +1,55 @@
+---
+// Home-page project cards: title + one-line subtitle over a faint, project-specific background (ProjectCover).
+// Up to 3 per row; cards marked featuredIfRoom only appear when the row has room for a third card.
+import type { Project } from '../data/projects';
+import ProjectCover from './ProjectCover.astro';
+interface Props { items: Project[] }
+const { items } = Astro.props;
+---
+<div class="fp-wrap">
+  <div class="fp">
+    {items.map((p) => (
+      <a class:list={['fcard', p.cover?.kind, { 'if-room': p.featuredIfRoom }]} href={`/research/${p.slug}/`}>
+        <div class:list={['cover', p.cover?.kind]}>{p.cover && <ProjectCover cover={p.cover} />}</div>
+        <div class="txt">
+          <h3>{p.title}</h3>
+          <p>{p.subtitle}</p>
+        </div>
+      </a>
+    ))}
+  </div>
+</div>
+
+<style>
+  .fp-wrap { container-type: inline-size; margin-top: 1.25rem; }
+  .fp { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 228px), 1fr)); gap: 18px; }
+  /* 3 × 228px + 2 × 18px = 720px: below that only two fit in a row, so the optional card is hidden */
+  .if-room { display: none; }
+  @container (min-width: 720px) { .if-room { display: flex; } }
+
+  .fcard {
+    position: relative; display: flex; flex-direction: column; justify-content: flex-end;
+    min-height: 220px; padding: 18px; overflow: hidden; isolation: isolate;
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+    color: inherit; text-decoration: none;
+    transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+  }
+  .fcard:hover, .fcard:focus-visible { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--line-strong); }
+
+  /* background art: faint by default, stronger on hover */
+  .cover { position: absolute; inset: 0; z-index: -1; opacity: .5; transition: opacity .3s ease, transform .6s ease; }
+  .fcard:hover .cover, .fcard:focus-visible .cover { opacity: .9; transform: scale(1.04); }
+  /* soft wash behind the text so it always reads */
+  .fcard::after {
+    content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: linear-gradient(to top, var(--surface) 22%, color-mix(in srgb, var(--surface) 70%, transparent) 48%, transparent 80%);
+  }
+
+  .cover.eeg { opacity: .75; }
+  .fcard:hover .cover.eeg, .fcard:focus-visible .cover.eeg { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .fcard, .cover { transition: none; } }
+
+  .txt h3 { margin: 0 0 .25rem; font-family: var(--font-serif); font-weight: 500; font-size: 1.3rem; color: var(--ink); }
+  .txt p { margin: 0; font-size: .86rem; color: var(--ink-2); line-height: 1.4; }
+  .fcard:hover h3 { color: var(--accent-ink); }
+</style>

@@ -3,7 +3,11 @@ import Base from '../../layouts/Base.astro';
 import index from '../../data/wiki-index.json';
 import { areas, families, familyOf } from '../../data/notes-areas';
 const famSlot = Object.fromEntries(areas.map((a) => [a.slug, familyOf(a.slug).slot]));
-const payload = JSON.stringify({ notes: index.notes, famSlot });
+// Kitchen notes (cookbook, kitchen modules) live behind “A small surprise” on the Notes page and stay out of the graph.
+const isKitchen = (slug: string) => familyOf(slug).key === 'kitchen';
+const notes = index.notes.filter((n) => !isKitchen(n.areaSlug));
+const payload = JSON.stringify({ notes, famSlot });
+const legendFams = families.filter((f) => f.key !== 'kitchen');
 ---
 <Base title="Notes graph" description="A graph of Dexin Ren's notes, linked by references and tags." wide>
   <a class="backlink" href="/notes/">← Notes</a>
@@ -20,7 +24,7 @@ const payload = JSON.stringify({ notes: index.notes, famSlot });
     <div id="g-panel" class="g-panel" hidden></div>
   </div>
   <ul class="g-legend">
-    {families.map((f) => <li><span class="sw" style={`--c: var(--series-${f.slot})`} />{f.label}</li>)}
+    {legendFams.map((f) => <li><span class="sw" style={`--c: var(--series-${f.slot})`} />{f.label}</li>)}
     <li><span class="sw tag" />Tag</li>
     <li><span class="ln" />Link between notes</li>
   </ul>

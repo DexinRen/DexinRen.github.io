@@ -1,0 +1,147 @@
+---
+// Faint, animated background art for a project card (Home "Selected projects" and the Research grid).
+// The parent positions this box (absolute, inset 0) and decides opacity, washes and hover behaviour.
+//   denoise  RectifiedTraj: a scan line sweeps the raw GPS map and leaves the denoised map behind
+//   traffic  TrafficWhatIf: a day of simulated traffic, 7 AM – 8 PM
+//   eeg      NeurogenesisGNN: an EEG wave flows into a brain and leaves as bits
+//            (brain art adapted from Noto Emoji, © Google, Apache-2.0)
+//   anomaly  Mobility anomaly detection: a trajectory drifts under a magnifier; anomalous points turn red
+//   boxed    Math SFT: the same answer, rejected as free text and accepted inside \boxed{}
+//   cf       Counterfactuals: a one-feature edit leaves the data cloud, the correlation-aware edit stays inside it
+import type { Project } from '../data/projects';
+import eegSvg from '../assets/eeg-flow.svg?raw';
+import anomalySvg from '../assets/cover-anomaly.svg?raw';
+import cfSvg from '../assets/cover-cf.svg?raw';
+interface Props { cover: NonNullable<Project['cover']> }
+const { cover } = Astro.props;
+---
+<div class:list={['pc', cover.kind]} aria-hidden="true">
+  {cover.kind === 'mask' && <span class="mask" style={`--img: url(${cover.src})`} />}
+  {cover.kind === 'denoise' && (
+    <>
+      <span class="m raw" style={`--img: url(${cover.raw})`} />
+      <span class="m clean" style={`--img: url(${cover.clean})`} />
+      <span class="scan" />
+    </>
+  )}
+  {cover.kind === 'traffic' && (
+    <>
+      <img class="roads" src={cover.roads} alt="" loading="lazy" decoding="async" />
+      <picture>
+        <source srcset={cover.still} media="(prefers-reduced-motion: reduce)" />
+        <img class="traffic" src={cover.anim} alt="" loading="lazy" decoding="async" />
+      </picture>
+    </>
+  )}
+  {cover.kind === 'eeg' && <Fragment set:html={eegSvg} />}
+  {cover.kind === 'anomaly' && <Fragment set:html={anomalySvg} />}
+  {cover.kind === 'cf' && <Fragment set:html={cfSvg} />}
+  {cover.kind === 'boxed' && (
+    <div class="bx">
+      <p class="ln l1"><span class="tx">solution: x = \frac&#123;3&#125;&#123;4&#125;</span><span class="mk no">✗</span></p>
+      <p class="ln l2"><span class="tx">\boxed&#123;\frac&#123;3&#125;&#123;4&#125;&#125;</span><span class="mk yes">✓</span></p>
+    </div>
+  )}
+</div>
+
+<script>
+  // SMIL animations ignore prefers-reduced-motion, so pause them explicitly.
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll<SVGSVGElement>('.pc svg').forEach((s) => s.pauseAnimations?.());
+  }
+</script>
+
+<style>
+  .pc { position: absolute; inset: 0; --anom: #c23b2e; }
+  :global(:root[data-theme='dark']) .pc { --anom: #ec6f60; }
+  .pc :global(svg) { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  .mask {
+    position: absolute; inset: -6%; background: var(--accent); opacity: .85;
+    -webkit-mask: var(--img) center / cover no-repeat; mask: var(--img) center / cover no-repeat;
+  }
+
+  /* denoise: 0–40 % sweep left→right, noisy map becomes the denoised map; hold; fade back to the raw map */
+  .denoise .m { position: absolute; inset: -6%; -webkit-mask: var(--img) center / cover no-repeat; mask: var(--img) center / cover no-repeat; }
+  .denoise .raw { background: var(--ink-3); opacity: .7; animation: dn-raw 9s ease-in-out infinite; }
+  .denoise .clean { background: var(--accent); opacity: .9; animation: dn-clean 9s ease-in-out infinite; }
+  .denoise .scan { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: var(--accent); box-shadow: 0 0 10px var(--accent); opacity: 0; animation: dn-scan 9s ease-in-out infinite; }
+  @keyframes dn-clean { 0% { clip-path: inset(0 100% 0 0); } 40%, 100% { clip-path: inset(0 0 0 0); } 0%, 78% { opacity: .9; } 92%, 100% { opacity: 0; } }
+  @keyframes dn-raw { 0% { clip-path: inset(0 0 0 0); opacity: .7; } 40% { clip-path: inset(0 0 0 100%); opacity: .7; } 78% { clip-path: inset(0 0 0 100%); opacity: 0; } 79% { clip-path: inset(0 0 0 0); opacity: 0; } 92%, 100% { clip-path: inset(0 0 0 0); opacity: .7; } }
+  @keyframes dn-scan { 0% { left: 0; opacity: 1; } 40% { left: 100%; opacity: 1; } 41%, 100% { left: 100%; opacity: 0; } }
+
+  .traffic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .traffic .roads { opacity: .45; }
+  .traffic .traffic { opacity: .85; }
+  :global(:root[data-theme='dark']) .traffic .roads { opacity: .35; }
+
+  /* eeg: wave → brain → bits */
+  .eeg :global(svg) { inset: 2% 0 auto 0; height: 66%; }
+  .eeg :global(.br-outline) { fill: var(--surface); stroke: var(--ink-3); stroke-width: 1.3; vector-effect: non-scaling-stroke; }
+  .eeg :global(.br-groove) { fill: var(--ink-3); opacity: .6; }
+  .eeg :global(.bw-wave) { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; opacity: .8; }
+  .eeg :global(.bw-wave-move) { animation: bw-wave 2.4s linear infinite; }
+  .eeg :global(.bw-bits text) { font: 600 15px/1 var(--font-mono, ui-monospace, monospace); fill: var(--ink-3); }
+  .eeg :global(.bw-bits .bw-hot) { fill: var(--accent); }
+  .eeg :global(.bw-bits-move) { animation: bw-bits 5s linear infinite; }
+  @keyframes bw-wave { from { transform: translateX(-100px); } to { transform: translateX(0); } }
+  @keyframes bw-bits { from { transform: translateX(-216px); } to { transform: translateX(0); } }
+
+  /* anomaly: trajectory under a magnifier */
+  /* colours go in through custom properties: they inherit into the magnifier's <use> clone, class rules do not */
+  .anomaly { --an-dot: var(--ink-3); --an-line: color-mix(in srgb, var(--ink-3) 55%, transparent); }
+  .anomaly :global(.an-glass) { fill: var(--surface); }
+  .anomaly :global(.an-rim) { fill: none; stroke: var(--ink-2); stroke-width: 2.4; }
+  .anomaly :global(.an-handle) { stroke: var(--ink-2); stroke-width: 5; stroke-linecap: round; }
+  .anomaly :global(.an-cross) { stroke: var(--anom); stroke-width: 1; opacity: .5; }
+
+  /* cf: data cloud, naive edit ✗, correlation-aware edit ✓ (8 s cycle) */
+  .cf :global(.cf-axes line) { stroke: var(--line-strong); stroke-width: 1; }
+  .cf :global(.cf-axes text) { font: 500 9px var(--font-sans); fill: var(--ink-3); }
+  .cf :global(.cf-cloud) { fill: var(--ink-3); opacity: .55; }
+  .cf :global(.cf-person) { fill: var(--ink); }
+  .cf :global(.cf-ghost) { opacity: 0; }
+  .cf :global(.cf-naive) { fill: var(--anom); animation: cf-move-n 8s ease-in-out infinite; }
+  .cf :global(.cf-plaus) { fill: var(--accent); animation: cf-move-p 8s ease-in-out infinite; }
+  .cf :global(.cf-path) { stroke-width: 1.6; stroke-dasharray: 100; stroke-dashoffset: 100; fill: none; vector-effect: non-scaling-stroke; }
+  .cf :global(.cf-naive-path) { stroke: var(--anom); stroke-dasharray: 4 3; animation: cf-path-n 8s ease-in-out infinite; }
+  .cf :global(.cf-plaus-path) { stroke: var(--accent); animation: cf-path-p 8s ease-in-out infinite; }
+  .cf :global(.cf-mark path) { fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .cf :global(.cf-x path) { stroke: var(--anom); }
+  .cf :global(.cf-ok path) { stroke: var(--accent); }
+  .cf :global(.cf-mark) { opacity: 0; }
+  .cf :global(.cf-x) { animation: cf-x 8s ease-out infinite; }
+  .cf :global(.cf-ok) { animation: cf-ok 8s ease-out infinite; }
+  @keyframes cf-move-n { 0% { transform: none; opacity: 0; } 4% { opacity: 1; } 18%, 40% { transform: translate(var(--dx), var(--dy)); opacity: 1; } 46%, 100% { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+  @keyframes cf-path-n { 0% { stroke-dashoffset: 100; opacity: 1; } 18%, 40% { stroke-dashoffset: 0; opacity: 1; } 46%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+  @keyframes cf-x { 0%, 18% { opacity: 0; } 22%, 40% { opacity: 1; } 46%, 100% { opacity: 0; } }
+  @keyframes cf-move-p { 0%, 48% { transform: none; opacity: 0; } 52% { opacity: 1; } 66%, 90% { transform: translate(var(--dx), var(--dy)); opacity: 1; } 97%, 100% { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+  @keyframes cf-path-p { 0%, 48% { stroke-dashoffset: 100; opacity: 0; } 50% { opacity: 1; } 66%, 90% { stroke-dashoffset: 0; opacity: 1; } 97%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+  @keyframes cf-ok { 0%, 66% { opacity: 0; } 70%, 90% { opacity: 1; } 97%, 100% { opacity: 0; } }
+
+  /* boxed: free-text answer ✗, \boxed{} answer ✓ (7 s cycle) */
+  .boxed .bx { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; gap: 14px; padding: 0 8% 6%; }
+  .boxed .ln { margin: 0; display: flex; align-items: center; gap: 10px; font: 500 15px/1 var(--font-mono); color: var(--ink-2); white-space: nowrap; }
+  .boxed .tx { display: inline-block; clip-path: inset(0 100% 0 0); }
+  .boxed .l1 .tx { animation: bx-type1 7s steps(24, end) infinite, bx-dim 7s linear infinite; }
+  .boxed .l2 .tx { animation: bx-type2 7s steps(20, end) infinite; color: var(--ink); }
+  .boxed .mk { font: 700 20px/1 var(--font-sans); opacity: 0; transform: scale(.4); }
+  .boxed .no { color: var(--anom); animation: bx-no 7s ease-out infinite; }
+  .boxed .yes { color: var(--accent); animation: bx-yes 7s ease-out infinite; }
+  @keyframes bx-type1 { 0% { clip-path: inset(0 100% 0 0); } 16%, 88% { clip-path: inset(0 0 0 0); } 94%, 100% { clip-path: inset(0 0 0 0); } }
+  @keyframes bx-dim { 0%, 22% { opacity: 1; text-decoration: none; } 26%, 88% { opacity: .55; text-decoration: line-through; } 94%, 100% { opacity: 0; } }
+  @keyframes bx-no { 0%, 18% { opacity: 0; transform: scale(.4); } 22% { opacity: 1; transform: scale(1.25); } 26%, 88% { opacity: 1; transform: scale(1); } 94%, 100% { opacity: 0; } }
+  @keyframes bx-type2 { 0%, 32% { clip-path: inset(0 100% 0 0); opacity: 1; } 50%, 88% { clip-path: inset(0 0 0 0); opacity: 1; } 94%, 100% { clip-path: inset(0 0 0 0); opacity: 0; } }
+  @keyframes bx-yes { 0%, 52% { opacity: 0; transform: scale(.4); } 56% { opacity: 1; transform: scale(1.3); } 60%, 88% { opacity: 1; transform: scale(1); } 94%, 100% { opacity: 0; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .eeg :global(.bw-wave-move), .eeg :global(.bw-bits-move) { animation: none; }
+    .denoise .m, .denoise .scan { animation: none; }
+    .denoise .raw, .denoise .scan { display: none; }
+    .cf :global(*) { animation: none !important; }
+    .cf :global(.cf-plaus), .cf :global(.cf-plaus-path), .cf :global(.cf-ok) { opacity: 1; stroke-dashoffset: 0; transform: translate(var(--dx), var(--dy)); }
+    .cf :global(.cf-plaus-path), .cf :global(.cf-ok) { transform: none; }
+    .boxed .tx, .boxed .mk { animation: none !important; clip-path: none; opacity: 1; transform: none; }
+    .boxed .l1 .tx { opacity: .55; text-decoration: line-through; }
+  }
+</style>
