@@ -153,12 +153,37 @@ const tiers = [
 
   <p class="small muted note">
     The examples are shared deliberately. The TrafficWhatIf design overview is shown with its detailed design removed; its full
-    design documents, protocols and code stay private until the work is published. RectifiedTraj is published, and its code is MIT-licensed. This website was also
-    built with an AI assistant: I decided the structure, the content and what could be disclosed, and reviewed the result.
+    design documents, protocols and code stay private until the work is published. RectifiedTraj is published, and its code is MIT-licensed.
+  </p>
+
+  <h2 id="this-website">How this website was made</h2>
+  <p>
+    This website was built with AI too. First, I asked ChatGPT to interview me about all of my past research. The interview log runs to
+    more than <strong>50,000 English words</strong> and goes down to individual research decisions and the mistakes I made along the way.
+    Then I gave Claude read-only access to my project files (confidential projects and patients’ raw data excluded), the interview logs,
+    my papers and the raw experiment results, so that every page is backed by the real record.
+  </p>
+  <p>
+    I decided the structure, the content and what could be disclosed. I also defined the overall style of the site and designed most of its
+    visuals: the GIFs, images, backgrounds and animations. Every piece of content was checked by both me and AI.
+  </p>
+  <p>
+    I deliberately added many small details so that the site feels less like a strict professional page and more like a conversation with a
+    warm, real and friendly person. I hope you, my friend, enjoy it.
+  </p>
+  <p>
+    My thanks to ChatGPT and Claude for interviewing me, helping me recall every drop of detail from my past work, helping build this site,
+    and turning my designs into real, often complex animations. (My favourite: the shooting stars that glide across the page are math
+    formulas taken from my own notes!)
+  </p>
+  <p class="closing">
+    This website is not an AI hallucination or something floating in the air. It is built on my real experience, my own thinking, and many
+    hard-working but happy days and nights. Thank you, my friend, for visiting and reading my story.
   </p>
 </Base>
 
 <style>
+  .closing { font-family: var(--font-serif); font-size: 1.12rem; line-height: 1.6; color: var(--ink); border-left: 3px solid var(--accent); padding-left: 16px; margin-top: 1.5rem; }
   .lede strong { color: var(--ink); font-weight: 600; }
   .tiers { list-style: none; padding: 0; margin: 1.5rem 0 .75rem; display: grid; gap: 0; }
   .tier { position: relative; margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
