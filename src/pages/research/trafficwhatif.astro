@@ -10,7 +10,7 @@ import VideoTabs from '../../components/VideoTabs.astro';
     status="Early stage · ongoing"
     role="Team lead / researcher, USC InfoLab"
     period="Sep 2026 – present"
-    team="Learned-simulator direction developed with Prof. Cyrus Shahabi and collaborators; I lead the data and benchmark design."
+    team="Idea and supervision: Prof. Cyrus Shahabi and Dr. John Krumm. I lead the detailed data and benchmark design."
     tags={['Synthetic data', 'Sim-to-real transfer', 'Graph-structured shift', 'Surrogate models']}
     tldr={[
       'Standard traffic forecasting predicts the future from the past on a <strong>fixed</strong> road network. Planners need the counterfactual: what traffic looks like <strong>after</strong> a closure or policy change.',
@@ -61,7 +61,17 @@ import VideoTabs from '../../components/VideoTabs.astro';
 
   <h2>Where it came from</h2>
   <p>
-    A pilot project, <strong>TrafficDataGen</strong>, simulated traffic on a 10 × 10 grid city with thousands of agents, each given a randomized daily
+    TrafficWhatIf is an updated version of a research proposal we wrote in response to a call for research proposals from the
+    Los Angeles Department of Transportation. The proposal was not funded, but we still believed the question was worth answering,
+    so we kept working on it.
+  </p>
+  <p>
+    The core idea comes from <strong>Prof. Cyrus Shahabi</strong> and <strong>Dr. John Krumm</strong>, who led the original proposal;
+    my part was the detailed design. They now supervise the project, and many of its decisions grew out of their suggestions.
+    Special thanks to both of them.
+  </p>
+  <p>
+    Before that, a pilot project, <strong>TrafficDataGen</strong>, simulated traffic on a 10 × 10 grid city with thousands of agents, each given a randomized daily
     schedule. It showed that conventional simulators are slow at this scale, and its way of generating agent schedules became the starting
     point for how TrafficWhatIf generates agent plans.
   </p>
