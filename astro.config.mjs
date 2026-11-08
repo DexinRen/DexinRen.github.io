@@ -6,7 +6,7 @@ import { writeFileSync } from 'node:fs';
 
 const SITE = 'https://dexinren.github.io';
 
-// Writes dist/sitemap.xml after the build (no extra dependency): every HTML page except the 404 page.
+// Writes dist/sitemap.xml after the build (no extra dependency): every HTML page except the 404 page and the hidden playground.
 // robots.txt points search engines to it.
 const sitemap = () => ({
   name: 'local-sitemap',
@@ -14,7 +14,7 @@ const sitemap = () => ({
     'astro:build:done': ({ dir, pages }) => {
       const urls = pages
         .map((p) => p.pathname)
-        .filter((p) => (p === '' || p.endsWith('/')) && !p.startsWith('404'))
+        .filter((p) => (p === '' || p.endsWith('/')) && !p.startsWith('404') && !p.startsWith('playground'))
         .sort()
         .map((p) => `  <url><loc>${new URL(p, SITE + '/').href}</loc></url>`);
       writeFileSync(new URL('sitemap.xml', dir),

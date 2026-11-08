@@ -4,8 +4,8 @@ import MathSky from '../components/MathSky.astro';
 import Sidebar from '../components/Sidebar.astro';
 import { site } from '../data/site';
 
-interface Props { title?: string; description?: string; wide?: boolean; image?: string }
-const { title, description = site.description, wide = false, image = '/og.png' } = Astro.props;
+interface Props { title?: string; description?: string; wide?: boolean; image?: string; noindex?: boolean }
+const { title, description = site.description, wide = false, image = '/og.png', noindex = false } = Astro.props;
 const fullTitle = title ? `${title} — ${site.name}` : `${site.name} — ${site.tagline}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
@@ -17,6 +17,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
     <meta name="google-site-verification" content="j7t1-_a2XAifFCMshlk15TxwnOWbkOkFFb4lZpy164Y" />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />

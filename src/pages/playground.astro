@@ -1,0 +1,116 @@
+---
+// Hidden bonus page: devil-cat pool. Linked only from the About page; kept out of the nav, the sitemap and search results.
+import Base from '../layouts/Base.astro';
+---
+<Base title="The devil cat's table" description="A small pool game with a devil cat sleeping on the table." wide noindex>
+  <a class="backlink" href="/about/">← About</a>
+  <h1>The devil cat’s table</h1>
+  <p class="lede">
+    Eight-ball, except a black cat has claimed the table. Don’t poke it. Don’t bounce balls off it. And keep an eye on the 8: this cat knows the rules.
+  </p>
+
+  <div class="cp" id="catpool">
+    <div class="cp-hud">
+      <div class="cp-p" data-i="0"><span class="n">You</span><span class="g">open table</span><span class="hp"></span></div>
+      <div class="cp-cat">
+        <span class="k">Cat</span>
+        <span class="cp-anger" title="Anger: at the third level the cat scratches whoever annoyed it"></span>
+        <span class="cp-grudge" title="Grudge: every fifth time the cat gets angrier, it drags a pocketed ball back out"></span>
+      </div>
+      <div class="cp-p" data-i="1"><span class="n">Computer</span><span class="g">open table</span><span class="hp"></span></div>
+    </div>
+    <div class="cp-stage">
+      <canvas aria-label="Pool table with a cat on it. Drag back from the white cue ball to aim, release to shoot."></canvas>
+      <div class="cp-claw" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="cp-over" hidden>
+        <p class="t"></p>
+        <p class="s"></p>
+        <button type="button" class="btn">Play again</button>
+      </div>
+    </div>
+    <div class="cp-power" aria-hidden="true"><span></span></div>
+    <p class="cp-msg" aria-live="polite"></p>
+    <div class="cp-ctl">
+      <button type="button" class="btn ghost cp-mode">Mode: vs computer</button>
+      <button type="button" class="btn ghost cp-new">New game</button>
+    </div>
+  </div>
+
+  <details class="cp-rules">
+    <summary>How to play</summary>
+    <ul>
+      <li><strong>Shoot:</strong> press anywhere on the table, drag back away from the cue ball to aim and set power, then let go. The stick turns red if it would poke the cat.</li>
+      <li><strong>Turns:</strong> keep shooting as long as any ball goes into a pocket. Your first pot decides your group: <em>solids</em> are the plain-coloured balls (1–7), <em>stripes</em> are the white balls with a colour band (9–15). Your card shows which one you have, and your balls get a soft glow on your turn. Clear your group, then sink the 8 to win.</li>
+      <li><strong>Losing:</strong> the 8 goes down before your group is cleared (or you scratch on it), your HP runs out, or you pocket the last of your opponent’s balls (they win).</li>
+      <li><strong>Scratch:</strong> if the cue ball falls in, your opponent gets ball in hand anywhere on the table.</li>
+      <li><strong>The cat</strong> rolls a die every second: keep sleeping, flick its tail, roll over, wander across the table, or swat a ball. Anything the cat pockets counts for whoever’s turn it is, including the 8. The angrier it is, the busier it gets and the more it likes the 8.</li>
+      <li><strong>Anger:</strong> a ball you set moving that bumps the cat adds 1, poking it with your cue adds 2. At the third level it scratches whoever annoyed it (−1 HP of 3), then calms down. Balls the cat moves itself never count.</li>
+      <li><strong>Hugs:</strong> sometimes the cat holds a ball. It won’t move if you hit it, and the cat counts that as being poked.</li>
+      <li><strong>Grudge:</strong> every fifth time the cat gets angrier, it drags a pocketed ball back onto the table.</li>
+      <li><strong>The computer</strong> avoids the cat too, but it can only foresee the first couple of metres of each ball’s path.</li>
+    </ul>
+  </details>
+</Base>
+
+<script>
+  import { mountCatPool } from '../scripts/catpool/game';
+  const el = document.getElementById('catpool');
+  if (el) mountCatPool(el);
+</script>
+
+<style>
+  .backlink { display: inline-block; margin-bottom: .5rem; font-size: .85rem; color: var(--ink-3); text-decoration: none; }
+  .backlink:hover { color: var(--accent-ink); }
+  .cp { margin-top: 1.5rem; }
+  .cp-hud { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: stretch; margin-bottom: 10px; }
+  .cp-p, .cp-cat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .cp-p[data-i="1"] { align-items: flex-end; text-align: right; }
+  .cp-p.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+  .cp-p .n { font-weight: 600; font-size: .95rem; }
+  .cp-p .g { font-size: .75rem; color: var(--ink-3); display: flex; align-items: center; gap: 5px; }
+  .cp-p :global(.mb) { width: 13px; height: 13px; border-radius: 50%; display: inline-block; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+  .cp-p :global(.mb.solid) { background: #d13b2f; }
+  .cp-p :global(.mb.stripe) { background: linear-gradient(#f6f1e6 0 27%, #d13b2f 27% 73%, #f6f1e6 73%); }
+  .cp-p :global(.mb.eight) { background: #151515; }
+  .cp-p :global(.hp) { display: flex; gap: 4px; }
+  .cp-p :global(.hp i) { width: 14px; height: 13px; display: inline-block; background: var(--line-strong); clip-path: path('M7 13 L1.2 6.6 A3.4 3.4 0 0 1 7 2.4 A3.4 3.4 0 0 1 12.8 6.6 Z'); }
+  .cp-p :global(.hp i.full) { background: #d9432f; }
+  .cp-cat { align-items: center; text-align: center; }
+  .cp-cat .k { font-size: .7rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .cp-cat :global(.cp-anger) { display: flex; gap: 4px; align-items: center; font-size: .72rem; color: var(--ink-2); }
+  .cp-cat :global(.cp-anger i) { width: 18px; height: 7px; border-radius: 4px; background: var(--line-strong); display: inline-block; }
+  .cp-cat :global(.cp-anger i.on.l1) { background: #c9a227; }
+  .cp-cat :global(.cp-anger i.on.l2) { background: #e07a2c; }
+  .cp-cat :global(.cp-anger i.on.l3) { background: #d9432f; }
+  .cp-cat :global(.cp-anger span) { margin-left: 4px; min-width: 50px; text-align: left; }
+  .cp-cat :global(.cp-grudge) { display: flex; gap: 3px; }
+  .cp-cat :global(.cp-grudge i) { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--line-strong); display: inline-block; }
+  .cp-cat :global(.cp-grudge i.on) { background: var(--ink-2); border-color: var(--ink-2); }
+  .cp-stage { position: relative; width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .cp-stage canvas { display: block; border-radius: 12px; box-shadow: var(--shadow-lg); cursor: crosshair; }
+  .cp-power { height: 4px; margin: 8px 2px 0; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .cp-power span { display: block; height: 100%; width: calc(var(--cp-power, 0) * 100%); background: linear-gradient(90deg, #c9a227, #d9432f); }
+  .cp-msg { min-height: 3.6em; margin: 10px 0 6px; font-size: .9rem; color: var(--ink); display: flex; flex-direction: column; gap: 2px; }
+  .cp-msg :global(.old) { color: var(--ink-3); font-size: .82rem; }
+  .cp-ctl { display: flex; gap: 8px; flex-wrap: wrap; }
+  .cp-over { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 4px; background: color-mix(in srgb, var(--bg) 82%, transparent); border-radius: 12px; padding: 16px; }
+  .cp-over[hidden] { display: none; }
+  .cp-over .t { font-family: var(--font-serif); font-size: 2rem; margin: 0; }
+  .cp-over .s { margin: 0 0 12px; color: var(--ink-2); max-width: 32em; }
+  .cp-over .btn { justify-self: center; }
+  .cp-claw { position: absolute; inset: 0; pointer-events: none; display: flex; justify-content: center; align-items: center; gap: 22px; opacity: 0; }
+  .cp-claw i { width: 9px; height: 70%; border-radius: 9px; background: linear-gradient(#d9432f, #8f1f14); transform: rotate(22deg) scaleY(0); transform-origin: top; box-shadow: 0 0 12px rgba(217, 67, 47, .6); }
+  .cp-claw:global(.go) { animation: claw-fade 1.4s ease-out; }
+  .cp-claw:global(.go) i { animation: claw-cut .25s ease-out forwards; }
+  .cp-claw:global(.go) i:nth-child(2) { animation-delay: .05s; }
+  .cp-claw:global(.go) i:nth-child(3) { animation-delay: .1s; }
+  @keyframes claw-cut { to { transform: rotate(22deg) scaleY(1); } }
+  @keyframes claw-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+  .cp-rules { margin-top: 1.75rem; }
+  .cp-rules summary { cursor: pointer; font-weight: 600; }
+  .cp-rules li { margin: .35rem 0; color: var(--ink-2); }
+  @media (max-width: 639px) {
+    .cp-hud { grid-template-columns: 1fr 1fr; }
+    .cp-cat { grid-column: 1 / -1; grid-row: 2; flex-direction: row; justify-content: center; gap: 12px; }
+  }
+</style>

@@ -45,8 +45,8 @@ import Base from '../layouts/Base.astro';
       that predicts hidden parts of an input from the visible parts. Within minutes it had connected to two of my projects. For the
       dementia-risk project, an encoder with JEPA-style masked completion could fill in the risk factors that have to move together
       when DiCE suggests a change, so the counterfactuals stay realistic. It also opened a new angle on my traffic simulation work.
-      Somewhere on the same road I designed a pool game in which a devil cat sits on the table, bites the player, knocks the balls
-      around and drags pocketed balls back out.
+      Somewhere on the same road I designed <a class="game-link" href="/playground/">a pool game<span class="play">play it ▸</span></a>
+      in which a devil cat sits on the table, scratches the player, knocks the balls around and drags pocketed balls back out.
     </p>
     <p>
       Living like this feels like travelling through a high-dimensional space: millions of directions, and every one of them
@@ -56,5 +56,15 @@ import Base from '../layouts/Base.astro';
 </Base>
 
 <style>
+  .game-link { color: var(--accent-ink); font-weight: 600; text-decoration: underline wavy color-mix(in srgb, var(--accent) 55%, transparent); text-underline-offset: 4px; }
+  .game-link:hover { color: var(--accent); }
+  .game-link .play {
+    display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; vertical-align: 2px;
+    font: 600 .7rem/1.5 var(--font-sans); letter-spacing: .02em; text-decoration: none;
+    color: var(--on-accent); background: var(--accent); animation: play-nudge 2.6s ease-in-out infinite;
+  }
+  @keyframes play-nudge { 0%, 80%, 100% { transform: translateX(0); } 88% { transform: translateX(3px); } 94% { transform: translateX(-1px); } }
+  @media (prefers-reduced-motion: reduce) { .game-link .play { animation: none; } }
+
   .why p:first-of-type { font-family: var(--font-serif); font-size: 1.15rem; color: var(--ink); line-height: 1.55; }
 </style>
