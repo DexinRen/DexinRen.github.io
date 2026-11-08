@@ -360,6 +360,19 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     <li>Can a smaller model with a better inductive bias match RT-Hybrid, and can we explain <em>what</em> the correction field has learned?</li>
     <li>Real-world evaluation is limited by data: BlogWatcher is sparse and extreme. A more typical real-world benchmark with exact ground truth would change what we can claim.</li>
   </ul>
+
+  <h2>Acknowledgments</h2>
+  <p>Special thanks to the people who shaped this project:</p>
+  <ul class="thanks">
+    <li>
+      <strong>Prof. Cyrus Shahabi</strong>, for research advice that changed the project’s direction: he pointed out weak points in our
+      ablation study that we had not considered, flagged that we were training and testing only on synthetic NUMOSIM data, urging us to
+      evaluate on more datasets with different noise types and to seek real-world data, and suggested a causal architecture. He also spent many hours listening to our presentations and progress reports; I am grateful for his time,
+      his suggestions and his patience.
+    </li>
+    <li><strong>Shang-Ling Hsu</strong> and <strong>Chen Chu</strong>, for valuable advice on both the paper writing and the project’s development.</li>
+    <li><strong>Lifeng Lin</strong>, for help with the BlogWatcher evaluation.</li>
+  </ul>
 </Base>
 
 <style>
