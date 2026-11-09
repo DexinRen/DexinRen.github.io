@@ -7,18 +7,20 @@ import { writeFileSync } from 'node:fs';
 const SITE = 'https://dexinren.github.io';
 
 // Writes dist/sitemap.xml after the build (no extra dependency): every HTML page except the 404 page and the hidden playground.
-// robots.txt points search engines to it.
+// Also writes dist/sitemap.txt with the same URLs. robots.txt points search engines to both.
 const sitemap = () => ({
   name: 'local-sitemap',
   hooks: {
     'astro:build:done': ({ dir, pages }) => {
-      const urls = pages
+      const locs = pages
         .map((p) => p.pathname)
         .filter((p) => (p === '' || p.endsWith('/')) && !p.startsWith('404') && !p.startsWith('playground'))
         .sort()
-        .map((p) => `  <url><loc>${new URL(p, SITE + '/').href}</loc></url>`);
+        .map((p) => new URL(p, SITE + '/').href);
       writeFileSync(new URL('sitemap.xml', dir),
-        `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`);
+        `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${locs.map((u) => `  <url><loc>${u}</loc></url>`).join('\n')}\n</urlset>\n`);
+      // the same list as plain text (one URL per line), a format Search Console also accepts
+      writeFileSync(new URL('sitemap.txt', dir), locs.join('\n') + '\n');
     },
   },
 });
