@@ -375,8 +375,9 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     </p>
     <ul>
       <li><strong>Why it could fail badly:</strong> our DirectReg and DDIM baselines show that when a model’s prediction target falls
-        outside what it was trained on, quality can collapse rather than degrade gently, and the output becomes untrustworthy. In a causal
-        denoiser the damage could also spread, because already-cleaned points become the history (the head buckle) for the points that follow.</li>
+        outside what it was trained on, quality can collapse rather than degrade gently, and the output becomes untrustworthy. An out-of-distribution
+        point may also do more than spoil its own prediction: it can contaminate the local features around it and the historical context the
+        model reads, so in a causal model it can “pollute” the predictions of the points that come after it.</li>
       <li><strong>Why it may hold up:</strong> in our zero-shot tests, a change of noise made RectifiedTraj worse, but we never saw its output
         become worse than the raw GPS. My hypothesis is that the model does not rely only on the noise distribution it learned: it also uses
         the past trajectory and what normal movement looks like.</li>
