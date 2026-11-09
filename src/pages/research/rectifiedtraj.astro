@@ -361,6 +361,44 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     <li>Real-world evaluation is limited by data: BlogWatcher is sparse and extreme. A more typical real-world benchmark with exact ground truth would change what we can claim.</li>
   </ul>
 
+  <h3 id="poster-question">From the poster session: noise that changes mid-trajectory</h3>
+  <div class="callout">
+    <p>
+      <em>Inspired by a discussion with a General Motors attendee at ACM SIGSPATIAL 2026.</em> At the poster, he asked how RectifiedTraj
+      behaves when the noise itself is not stable: when the noise distribution changes suddenly partway through a trajectory and later
+      changes back, or keeps shifting within one trip. A sudden noise spike, for example from an ionospheric disturbance during a
+      space-weather event, is one such case. I did not grasp the question fully in the moment, so here is the honest answer.
+    </p>
+    <p>
+      <strong>The honest answer: we have not tested it.</strong> RectifiedTraj was never trained on, or specifically evaluated against,
+      trajectories whose noise switches like this. The evidence we do have points in two directions:
+    </p>
+    <ul>
+      <li><strong>Why it could fail badly:</strong> our DirectReg and DDIM baselines show that when a model’s prediction target falls
+        outside what it was trained on, quality can collapse rather than degrade gently, and the output becomes untrustworthy. In a causal
+        denoiser the damage could also spread, because already-cleaned points become the history (the head buckle) for the points that follow.</li>
+      <li><strong>Why it may hold up:</strong> in our zero-shot tests, a change of noise made RectifiedTraj worse, but we never saw its output
+        become worse than the raw GPS. My hypothesis is that the model does not rely only on the noise distribution it learned: it also uses
+        the past trajectory and what normal movement looks like.</li>
+    </ul>
+    <p>
+      How bad a single prediction can get, and how far a bad one contaminates the predictions after it, is the part I find most interesting,
+      and it matters before anyone relies on the model. What I would recommend:
+    </p>
+    <ul>
+      <li><strong>For safety-critical platforms such as vehicles:</strong> extend the input beyond GPS to other sensors, such as the gyroscope and the speedometer, and train on data that mixes in what goes wrong on the road: noise distributions that change within a trajectory, sudden error spikes, and loss of signal (whole points masked out). Masking individual inputs at random as well teaches the model to cope when one source becomes unreliable.</li>
+      <li><strong>Evaluate exactly where it hurts:</strong> measure performance at error spikes and at changes of noise distribution, and trace how one bad prediction affects the predictions that follow.</li>
+      <li><strong>Give every point its own noise level:</strong> our initial design planned a noise evaluator that estimates the noise level of each point, instead of one noise level <em>τ</em> shared by the whole input window. A per-point level would at least warn the model about a sharp error spike, and would let the pipeline decide on its own whether a point needs more denoising steps.</li>
+      <li><strong>At least fine-tune:</strong> if retraining is not possible, fine-tune on sample data from the setting where the model will run.</li>
+      <li><strong>Calibrate on that data:</strong> this is one reason we chose rectified flow over residual regression. Rectified flow supports multi-step denoising; one step is usually enough, but with sample data from a new setting we can calibrate the number of steps and the head-buckle size.</li>
+      <li><strong>Use it as a secondary denoiser:</strong> RectifiedTraj is best placed behind a primary localization pipeline, cleaning what that pipeline passes on, not as the only safeguard against failures like these.</li>
+    </ul>
+    <p>
+      I am grateful for this question. It came from experience with real-world GPS data and its noise that we simply did not have: our work
+      has not yet gone that wide or that deep into real deployments, so we had not considered this situation at all. Thank you for sharing it.
+    </p>
+  </div>
+
   <h2>Acknowledgments</h2>
   <p>Special thanks to the people who shaped this project:</p>
   <ul class="thanks">
@@ -372,6 +410,7 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
     </li>
     <li><strong>Shang-Ling Hsu</strong> and <strong>Chen Chu</strong>, for valuable advice on both the paper writing and the project’s development.</li>
     <li><strong>Lifeng Lin</strong>, for help with the BlogWatcher evaluation.</li>
+    <li>The <strong>General Motors attendee</strong> at our SIGSPATIAL 2026 poster, for a question about noise that changes mid-trajectory that opened a new direction (see <a href="#poster-question">From the poster session</a> above).</li>
   </ul>
 </Base>
 
