@@ -5,6 +5,7 @@ import TrajGallery from '../../components/TrajGallery.astro';
 import BenchChart from '../../components/BenchChart.astro';
 import SpanDemo from '../../components/SpanDemo.astro';
 import BuckleDemo from '../../components/BuckleDemo.astro';
+import RectifiedFlowAnim from '../../components/RectifiedFlowAnim.astro';
 import archSvg from '../../assets/architecture-themed.svg?raw';
 
 // All numbers below are from the published tables in "RectifiedTraj Revisited" (UMFM @ SIGSPATIAL 2026).
@@ -105,11 +106,24 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
   <h2>How it works</h2>
 
   <h3>One-step correction with rectified flow</h3>
-  <p>
-    Rather than predicting clean coordinates, the model predicts a <em>correction</em> for every point: the velocity field that carries the
-    noisy trajectory straight to the clean one. Rectified flow makes that path straight, so a single forward pass applies the whole
-    correction, where diffusion needs hundreds of steps.
-  </p>
+  <div class="grid-2 rf">
+    <div>
+      <p>
+        Rather than predicting clean coordinates, the model predicts a <em>correction</em> for every point: the velocity field that carries the
+        noisy trajectory to the clean one. Rectified flow learns a <strong>straight</strong> path, our correction field, that moves data from the
+        noisy distribution on the left to the clean distribution on the right.
+      </p>
+      <p>
+        Because the path is straight, one step, or just a few, is enough to denoise, where diffusion needs hundreds. That keeps inference fast
+        and friendly to mobile devices. Want the full picture?
+        <a href="https://rectifiedflow.github.io/blog/2024/intro/" target="_blank" rel="noopener">Read the rectified flow introduction →</a>
+      </p>
+    </div>
+    <RectifiedFlowAnim>
+      Samples move along straight, non-crossing paths from the noisy distribution (left) to the clean one (right), so one step is enough.
+      Our own illustration; the <a href="https://rectifiedflow.github.io/blog/2024/intro/" target="_blank" rel="noopener">rectified flow introduction</a> by the method’s authors explains it in depth.
+    </RectifiedFlowAnim>
+  </div>
 
   <h3>A causal Hybrid network</h3>
   <div class="grid-2 approach">
@@ -416,6 +430,8 @@ const bwSeries = methods.map((m) => ({ ...m, values: [bwAcc[m.key]], note: m.key
 </Base>
 
 <style>
+  .rf { align-items: center; }
+
   .approach { align-items: center; }
   .approach p { font-size: .97rem; }
   /* the paper's architecture figure, recoloured to follow the site theme (no white panel) */

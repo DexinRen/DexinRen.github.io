@@ -1,0 +1,81 @@
+---
+// Theme-aware rectified-flow illustration (our own drawing, inline SVG + CSS):
+// samples from a wide noisy distribution (left) travel along straight, non-crossing paths
+// to a clean distribution (right) in one step. Deterministic, generated at build time.
+let seed = 11;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const gauss = () => { let u = 0, v = 0; while (u === 0) u = rnd(); while (v === 0) v = rnd(); const g = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); return Math.max(-2, Math.min(2, g)); };   // clipped: no stray outliers
+
+const L = { x: 78, y: 130 }, MODES = [{ x: 362, y: 78 }, { x: 362, y: 182 }];
+const N = 18;
+const src = Array.from({ length: N }, () => ({ x: L.x + gauss() * 20, y: L.y + gauss() * 38 }));
+const dst = Array.from({ length: N }, (_, i) => { const m = MODES[i < N / 2 ? 0 : 1]; return { x: m.x + gauss() * 7, y: m.y + gauss() * 9 }; });
+// pair the samples so that no two straight paths cross (as in a rectified coupling):
+// start from vertical order, then swap partners while that shortens the total path length (uncrossing always does)
+src.sort((a, b) => a.y - b.y); dst.sort((a, b) => a.y - b.y);
+const len = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+for (let changed = true, guard = 0; changed && guard < 200; guard++) {
+  changed = false;
+  for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+    if (len(src[i], dst[j]) + len(src[j], dst[i]) < len(src[i], dst[i]) + len(src[j], dst[j]) - 1e-9) {
+      [dst[i], dst[j]] = [dst[j], dst[i]]; changed = true;
+    }
+  }
+}
+const f = (v: number) => v.toFixed(1);
+const pairs = src.map((s, i) => ({ s, d: dst[i], delay: (rnd() * 0.25).toFixed(2) }));
+---
+<figure class="rfa">
+  <svg viewBox="0 0 440 262" role="img" aria-label="Animation: samples from a wide, noisy distribution on the left move along straight paths to a clean distribution on the right in one step.">
+    <!-- distributions -->
+    <g class="rfa-src">
+      {[1, 0.72, 0.45].map((k) => <ellipse cx={L.x} cy={L.y} rx={44 * k} ry={84 * k} />)}
+    </g>
+    <g class="rfa-dst">
+      {MODES.map((m) => [1, 0.6].map((k) => <ellipse cx={m.x} cy={m.y} rx={20 * k} ry={26 * k} />))}
+    </g>
+    <!-- straight paths, drawn as the samples travel -->
+    <g class="rfa-paths">
+      {pairs.map((p) => <line x1={f(p.s.x)} y1={f(p.s.y)} x2={f(p.d.x)} y2={f(p.d.y)} pathLength="1" style={`animation-delay:${p.delay}s`} />)}
+    </g>
+    <!-- samples -->
+    <g class="rfa-dots">
+      {pairs.map((p) => <circle cx={f(p.s.x)} cy={f(p.s.y)} r="3.4" style={`--dx:${f(p.d.x - p.s.x)}px;--dy:${f(p.d.y - p.s.y)}px;animation-delay:${p.delay}s`} />)}
+    </g>
+    <!-- labels -->
+    <text class="rfa-lbl" x={L.x} y="252" text-anchor="middle">noisy distribution</text>
+    <text class="rfa-lbl" x={MODES[0].x} y="252" text-anchor="middle">clean distribution</text>
+    <text class="rfa-step" x="220" y="22" text-anchor="middle">one straight step</text>
+  </svg>
+  <figcaption><slot /></figcaption>
+</figure>
+
+<style>
+  .rfa { margin: 0; }
+  .rfa svg { display: block; width: 100%; height: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+  .rfa-src ellipse { fill: none; stroke: var(--ink-3); stroke-width: 1; opacity: .55; }
+  .rfa-src ellipse:first-child { fill: color-mix(in srgb, var(--ink-3) 7%, transparent); }
+  .rfa-dst ellipse { fill: none; stroke: var(--series-2); stroke-width: 1.2; opacity: .7; }
+  .rfa-paths line { stroke: var(--accent); stroke-width: 1.1; opacity: .4; stroke-dasharray: 1; stroke-dashoffset: 1; animation: rfa-draw 6s ease-in-out infinite; }
+  .rfa-dots circle { fill: var(--accent); animation: rfa-move 6s ease-in-out infinite; }
+  .rfa-lbl { font: 500 11.5px var(--font-sans); fill: var(--ink-3); }
+  .rfa-step { font: 600 12px var(--font-sans); fill: var(--accent-ink); letter-spacing: .02em; }
+  /* 0–12 %: appear on the left · 12–55 %: one straight move · 55–85 %: rest on the clean side · then fade and repeat */
+  @keyframes rfa-move {
+    0% { transform: translate(0, 0); opacity: 0; fill: var(--ink-2); }
+    12% { transform: translate(0, 0); opacity: 1; fill: var(--ink-2); }
+    55% { transform: translate(var(--dx), var(--dy)); opacity: 1; fill: var(--series-2); }
+    85% { transform: translate(var(--dx), var(--dy)); opacity: 1; fill: var(--series-2); }
+    100% { transform: translate(var(--dx), var(--dy)); opacity: 0; fill: var(--series-2); }
+  }
+  @keyframes rfa-draw {
+    0%, 12% { stroke-dashoffset: 1; opacity: .4; }
+    55%, 85% { stroke-dashoffset: 0; opacity: .4; }
+    100% { stroke-dashoffset: 0; opacity: 0; }
+  }
+  .rfa figcaption { margin-top: .5rem; }
+  @media (prefers-reduced-motion: reduce) {
+    .rfa-paths line { animation: none; stroke-dashoffset: 0; }
+    .rfa-dots circle { animation: none; transform: translate(var(--dx), var(--dy)); fill: var(--series-2); }
+  }
+</style>
